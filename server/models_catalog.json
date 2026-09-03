@@ -3,252 +3,290 @@
   {
    "id": "black-forest-labs/flux.2-flex",
    "name": "Black Forest Labs: FLUX.2 Flex",
-   "image_price": 1.46484375e-05
+   "price_usd": 0.06,
+   "price_unit": "megapixel"
   },
   {
    "id": "black-forest-labs/flux.2-klein-4b",
    "name": "Black Forest Labs: FLUX.2 Klein 4B",
-   "image_price": 3.41796875e-06
+   "price_usd": 0.014,
+   "price_unit": "megapixel"
   },
   {
    "id": "black-forest-labs/flux.2-max",
    "name": "Black Forest Labs: FLUX.2 Max",
-   "image_price": 1.708984375e-05
+   "price_usd": 0.07,
+   "price_unit": "megapixel"
   },
   {
    "id": "black-forest-labs/flux.2-pro",
    "name": "Black Forest Labs: FLUX.2 Pro",
-   "image_price": 7.32421875e-06
+   "price_usd": 0.03,
+   "price_unit": "megapixel"
   },
   {
    "id": "bytedance-seed/seedream-4.5",
    "name": "ByteDance Seed: Seedream 4.5",
-   "image_price": 9.58083832335329e-06
+   "price_usd": 0.04,
+   "price_unit": "image"
   },
   {
    "id": "bytedance-seed/seedream-5-0-lite",
    "name": "ByteDance Seed: Seedream 5.0 Lite",
-   "image_price": 8.38323353293413e-06
+   "price_usd": 0.035,
+   "price_unit": "image"
   },
   {
    "id": "bytedance-seed/seedream-5-0-pro",
    "name": "ByteDance Seed: Seedream 5.0 Pro",
-   "image_price": 1.07784431137725e-05
+   "price_usd": 0.045,
+   "price_unit": "image"
   },
   {
    "id": "google/gemini-2.5-flash-image",
    "name": "Google: Nano Banana (Gemini 2.5 Flash Image)",
-   "image_price": 3e-05
+   "price_usd": 1.5e-05,
+   "price_unit": "token"
   },
   {
    "id": "google/gemini-3-pro-image",
    "name": "Google: Nano Banana Pro (Gemini 3 Pro Image)",
-   "image_price": 0.00012
+   "price_usd": 0.00012,
+   "price_unit": "token"
   },
   {
    "id": "google/gemini-3-pro-image-preview",
    "name": "Google: Nano Banana Pro (Gemini 3 Pro Image Preview)",
-   "image_price": 0.00012
+   "price_usd": 6e-05,
+   "price_unit": "token"
   },
   {
    "id": "google/gemini-3.1-flash-image",
    "name": "Google: Nano Banana 2 (Gemini 3.1 Flash Image)",
-   "image_price": 6e-05
+   "price_usd": 6e-05,
+   "price_unit": "token"
   },
   {
    "id": "google/gemini-3.1-flash-image-preview",
    "name": "Google: Nano Banana 2 (Gemini 3.1 Flash Image Preview)",
-   "image_price": 6e-05
+   "price_usd": 6e-05,
+   "price_unit": "token"
   },
   {
    "id": "google/gemini-3.1-flash-lite-image",
    "name": "Google: Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)",
-   "image_price": 3e-05
+   "price_usd": 3e-05,
+   "price_unit": "token"
   },
   {
    "id": "krea/krea-2-large",
    "name": "Krea: Krea 2 Large",
-   "image_price": 1.43712574850299e-05
+   "price_usd": null,
+   "price_unit": null
   },
   {
    "id": "krea/krea-2-medium",
    "name": "Krea: Krea 2 Medium",
-   "image_price": 7.18562874251497e-06
+   "price_usd": null,
+   "price_unit": null
   },
   {
    "id": "krea/krea-2-medium-turbo",
    "name": "Krea: Krea 2 Medium Turbo",
-   "image_price": 3.59281437125749e-06
+   "price_usd": null,
+   "price_unit": null
   },
   {
    "id": "meta/muse-image",
    "name": "Meta: Muse Image",
-   "image_price": 2.39520958083832e-06
+   "price_usd": null,
+   "price_unit": null
   },
   {
    "id": "microsoft/mai-image-2.5",
    "name": "Microsoft: MAI-Image-2.5",
-   "image_price": 4.7e-05
+   "price_usd": 4.7e-05,
+   "price_unit": "token"
   },
   {
    "id": "microsoft/mai-image-2.5-pro",
    "name": "Microsoft: MAI-Image-2.5 Pro",
-   "image_price": 0.000108
+   "price_usd": 0.000108,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-5-image",
    "name": "OpenAI: GPT-5 Image",
-   "image_price": 4e-05
+   "price_usd": 4e-05,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-5-image-mini",
    "name": "OpenAI: GPT-5 Image Mini",
-   "image_price": 8e-06
+   "price_usd": 8e-06,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-5.4-image-2",
    "name": "OpenAI: GPT-5.4 Image 2",
-   "image_price": 3e-05
+   "price_usd": 3e-05,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-image-1",
    "name": "OpenAI: GPT Image 1",
-   "image_price": 4e-05
+   "price_usd": 4e-05,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-image-1-mini",
    "name": "OpenAI: GPT Image 1 Mini",
-   "image_price": 8e-06
+   "price_usd": 8e-06,
+   "price_unit": "token"
   },
   {
    "id": "openai/gpt-image-2",
    "name": "OpenAI: GPT Image 2",
-   "image_price": 3e-05
-  },
-  {
-   "id": "openrouter/auto",
-   "name": "Auto Router",
-   "image_price": null
-  },
-  {
-   "id": "openrouter/auto-beta",
-   "name": "Auto Router (Beta)",
-   "image_price": null
+   "price_usd": 3e-05,
+   "price_unit": "token"
   },
   {
    "id": "qwen/qwen-image-3",
    "name": "Qwen: Qwen Image 3",
-   "image_price": 7.18562874251497e-06
+   "price_usd": 0.03,
+   "price_unit": "image"
   },
   {
    "id": "qwen/qwen-image-3-pro",
    "name": "Qwen: Qwen Image 3 Pro",
-   "image_price": 9.58083832335329e-06
+   "price_usd": 0.04,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v3",
    "name": "Recraft: Recraft V3",
-   "image_price": 9.58083832335329e-06
+   "price_usd": 0.04,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4",
    "name": "Recraft: Recraft V4",
-   "image_price": 9.58083832335329e-06
+   "price_usd": 0.04,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-pro",
    "name": "Recraft: Recraft V4 Pro",
-   "image_price": 5.98802395209581e-05
+   "price_usd": 0.25,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-pro-vector",
    "name": "Recraft: Recraft V4 Pro Vector",
-   "image_price": 7.18562874251497e-05
+   "price_usd": 0.3,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-styles",
    "name": "Recraft: Recraft V4 Styles",
-   "image_price": 8.38323353293413e-06
+   "price_usd": 0.035,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-styles-pro",
    "name": "Recraft: Recraft V4 Styles Pro",
-   "image_price": 2.39520958083832e-05
+   "price_usd": 0.1,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-styles-pro-vector",
    "name": "Recraft: Recraft V4 Styles Pro Vector",
-   "image_price": 2.87425149700599e-05
+   "price_usd": 0.12,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-styles-vector",
    "name": "Recraft: Recraft V4 Styles Vector",
-   "image_price": 1.19760479041916e-05
+   "price_usd": 0.05,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4-vector",
    "name": "Recraft: Recraft V4 Vector",
-   "image_price": 1.91616766467066e-05
+   "price_usd": 0.08,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1",
    "name": "Recraft: Recraft V4.1",
-   "image_price": 8.38323353293413e-06
+   "price_usd": 0.035,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1-pro",
    "name": "Recraft: Recraft V4.1 Pro",
-   "image_price": 5.02994011976048e-05
+   "price_usd": 0.21,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1-pro-vector",
    "name": "Recraft: Recraft V4.1 Pro Vector",
-   "image_price": 7.18562874251497e-05
+   "price_usd": 0.3,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1-utility",
    "name": "Recraft: Recraft V4.1 Utility",
-   "image_price": 8.38323353293413e-06
+   "price_usd": 0.035,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1-utility-pro",
    "name": "Recraft: Recraft V4.1 Utility Pro",
-   "image_price": 5.02994011976048e-05
+   "price_usd": 0.21,
+   "price_unit": "image"
   },
   {
    "id": "recraft/recraft-v4.1-vector",
    "name": "Recraft: Recraft V4.1 Vector",
-   "image_price": 1.91616766467066e-05
+   "price_usd": 0.08,
+   "price_unit": "image"
   },
   {
    "id": "sourceful/riverflow-v2-fast",
    "name": "Sourceful: Riverflow V2 Fast",
-   "image_price": 4.79041916167665e-06
+   "price_usd": 0.02,
+   "price_unit": "image"
   },
   {
    "id": "sourceful/riverflow-v2-pro",
    "name": "Sourceful: Riverflow V2 Pro",
-   "image_price": 3.59281437125749e-05
+   "price_usd": 0.15,
+   "price_unit": "image"
   },
   {
    "id": "sourceful/riverflow-v2.5-fast",
    "name": "Sourceful: Riverflow V2.5 Fast",
-   "image_price": 4.55089820359281e-06
+   "price_usd": 0.019,
+   "price_unit": "image"
   },
   {
    "id": "sourceful/riverflow-v2.5-pro",
    "name": "Sourceful: Riverflow V2.5 Pro",
-   "image_price": 3.11377245508982e-05
+   "price_usd": 0.13,
+   "price_unit": "image"
   },
   {
    "id": "x-ai/grok-imagine-image-2.0",
    "name": "xAI: Grok Imagine Image 2.0",
-   "image_price": 9.58083832335329e-06
+   "price_usd": 0.04,
+   "price_unit": "image"
   },
   {
    "id": "x-ai/grok-imagine-image-quality",
    "name": "SpaceXAI: Grok Imagine Image Quality",
-   "image_price": 1.19760479041916e-05
+   "price_usd": 0.05,
+   "price_unit": "image"
   }
  ]
 }

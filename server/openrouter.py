@@ -18,8 +18,9 @@ import os
 import requests
 
 API_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "google/gemini-2.5-flash-image"
+DEFAULT_MODEL = "bytedance-seed/seedream-5-0-pro"
 RECOMMENDED = {
+    "bytedance-seed/seedream-5-0-pro",
     "google/gemini-2.5-flash-image",
     "google/gemini-3.1-flash-image",
 }
@@ -48,11 +49,12 @@ def _to_int(v):
 def list_models():
     """Image-generation models from the bundled static catalog.
 
-    Returns list of {id, name, recommended, input_price, image_price,
-    context_length}. image_price comes from OpenRouter's
-    pricing.image_output (USD per image); models without a published
-    per-image price get null (clients show "—"). Refresh the catalog by
-    running scripts/refresh_models.py.
+    Returns list of {id, name, recommended, input_price, price_usd,
+    price_unit, context_length}. price_usd/price_unit come from the
+    dedicated Image Models API (scripts/refresh_models.py): the resolved
+    output_image line in its native unit — "image" (USD per image),
+    "megapixel" (USD per megapixel), "token" (USD per token). Models with
+    no published output price get price_usd=null (clients show "—").
     Sorted by recommended first, then id.
     """
     try:
@@ -68,7 +70,8 @@ def list_models():
             "name": m["name"],
             "recommended": m["id"] in RECOMMENDED,
             "input_price": None,
-            "image_price": m["image_price"],
+            "price_usd": m.get("price_usd"),
+            "price_unit": m.get("price_unit"),
             "context_length": None,
         }
         for m in catalog
@@ -83,11 +86,13 @@ def generate(
     image_url=None,
     api_key=None,
     seed=None,
+    aspect_ratio=None,
 ) -> bytes:
-    """Call the OpenRouter image generation endpoint (POST /images).
+    """Call the dedicated OpenRouter image endpoint (POST /api/v1/images).
 
     image_url: optional data URL of the reference image (img2img, mapped to
     input_references), or ""/None for pure text-to-image.
+    aspect_ratio: one of the supported ratios (e.g. "16:9"), or "auto".
     Returns the decoded output PNG bytes (data[0].b64_json).
     """
     key = resolve_key(api_key)
@@ -104,6 +109,8 @@ def generate(
         "n": 1,
         "output_format": "png",
     }
+    if aspect_ratio:
+        body["aspect_ratio"] = aspect_ratio
     if image_url:
         body["input_references"] = [
             {"type": "image_url", "image_url": {"url": image_url}}

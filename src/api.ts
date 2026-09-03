@@ -6,12 +6,15 @@ export interface Health {
   key_configured?: boolean;
 }
 
+export type PriceUnit = "image" | "megapixel" | "token";
+
 export interface ModelInfo {
   id: string;
   name: string;
   recommended: boolean;
-  input_price: number | null; // USD per 1M prompt tokens
-  image_price: number | null; // USD per image
+  input_price: number | null;
+  price_usd: number | null; // USD per unit (image, megapixel, or token)
+  price_unit: PriceUnit | null;
   context_length: number | null;
 }
 
@@ -91,6 +94,7 @@ export interface GenerationRequest {
   negative_prompt?: string;
   width?: number;
   height?: number;
+  aspect_ratio?: string;
   steps?: number;
   cfg?: number;
   denoise?: number;
@@ -247,6 +251,85 @@ export function deleteRevision(id: number): Promise<unknown> {
   return jfetch<unknown>(`/api/revisions/${id}`, { method: "DELETE" });
 }
 
+// --- aspect ratio detection ------------------------------------------------
+
+/** Supported output aspect ratios, in preference order (first wins ties). */
+export const ASPECT_RATIOS = [
+  "1:1",
+  "1:2",
+  "1:4",
+  "1:8",
+  "2:1",
+  "2:3",
+  "3:2",
+  "3:4",
+  "4:1",
+  "4:3",
+  "4:5",
+  "5:4",
+  "8:1",
+  "9:16",
+  "16:9",
+  "9:19.5",
+  "19.5:9",
+  "9:20",
+  "20:9",
+  "9:21",
+  "21:9",
+] as const;
+
+export type AspectRatio = (typeof ASPECT_RATIOS)[number];
+
+/** Snap an image's dimensions to the nearest supported ratio.
+ *  Compares log-ratios so 1:2 and 2:1 sit equal-and-opposite (a 2x-tall
+ *  image is as "far" from 1:1 as a 2x-wide one). Ties: earliest in list.
+ *  When `tol` is given and the nearest ratio is farther than `tol` (log
+ *  distance), returns "auto" instead — degenerate inputs get a free-form
+ *  match via prompt hint rather than a forced, visibly-wrong snap. */
+export function closestAspectRatio(
+  width: number,
+  height: number,
+  tol = Infinity,
+): AspectRatio | "auto" {
+  const v = Math.log(width / height);
+  let best: AspectRatio = ASPECT_RATIOS[0];
+  let bestD = Infinity;
+  for (const r of ASPECT_RATIOS) {
+    const [w, h] = r.split(":").map(Number);
+    const d = Math.abs(v - Math.log(w / h));
+    if (d < bestD) {
+      bestD = d;
+      best = r;
+    }
+  }
+  return bestD <= tol ? best : "auto";
+}
+
+/** Decode an image file just to read its dimensions + snapped ratio.
+ *  Ratios farther than ~28% (log 0.25) from every listed option come back
+ *  as "auto" so the renderer matches by prompt hint instead of a bad snap. */
+export function measureImage(
+  file: File,
+): Promise<{ width: number; height: number; ratio: AspectRatio | "auto" }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Unsupported or corrupt image"));
+    };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({
+        width: img.width,
+        height: img.height,
+        ratio: closestAspectRatio(img.width, img.height, 0.25),
+      });
+    };
+    img.src = url;
+  });
+}
+
 // --- file -> base64 data URL (client-side, capped at 2048px) ---------------
 
 const MAX_SIDE = 2048;
@@ -311,11 +394,25 @@ export function wait(ms: number): Promise<void> {
 
 // --- formatting -------------------------------------------------------------
 
-export function fmtPrice(usd: number | string | null | undefined): string {
+export function fmtPrice(
+  usd: number | string | null | undefined,
+  unit?: PriceUnit | null,
+): string {
   if (usd == null) return "—";
   const n = Number(usd);
   if (Number.isNaN(n)) return "—";
-  return `$${n.toFixed(n < 0.001 ? 7 : 3)}/image`;
+  // Display in the same unit OpenRouter uses on its models page: per image,
+  // per megapixel, or per million tokens. Trailing zeros stripped (like the
+  // site, which shows "$0.03 per image", not "$0.030").
+  const trim = (x: number) => String(Number(x.toFixed(4)));
+  switch (unit) {
+    case "megapixel":
+      return `$${trim(n)}/MP`;
+    case "token":
+      return `$${n * 1e6 >= 100 ? (n * 1e6).toFixed(0) : trim(n * 1e6)}/M tok`;
+    default: // "image" (or unknown) — per image
+      return `$${trim(n)}/img`;
+  }
 }
 
 export function shortModel(id: string): string {

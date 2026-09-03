@@ -29,7 +29,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-os.makedirs(db.IMAGES_DIR, exist_ok=True)
+try:
+    os.makedirs(db.IMAGES_DIR, exist_ok=True)
+except OSError as e:
+    raise RuntimeError(f"images directory unwritable: {e}") from e
 app.mount("/images", StaticFiles(directory=db.IMAGES_DIR), name="images")
 
 # ------------------------------------------------------------------ helpers
@@ -73,6 +76,12 @@ def _data_url(path: str) -> str:
         "webp": "image/webp",
     }.get(ext, "image/png")
     return f"data:{mime};base64," + base64.b64encode(raw).decode()
+
+
+def _image_size(data_url: str) -> tuple[int, int]:
+    """Decode a base64 data URL and return the image's (width, height)."""
+    img = Image.open(io.BytesIO(base64.b64decode(data_url.split(",", 1)[1])))
+    return img.width, img.height
 
 
 def _save_bytes(data: bytes, ext: str = "png") -> str:
@@ -126,6 +135,7 @@ class GenerateRequest(BaseModel):
     negative_prompt: str | None = None
     width: int | None = None
     height: int | None = None
+    aspect_ratio: str | None = None
     steps: int | None = None
     cfg: float | None = None
     denoise: float | None = None
@@ -175,6 +185,7 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
     params = {
         "width": req.width,
         "height": req.height,
+        "aspect_ratio": req.aspect_ratio,
         "steps": req.steps,
         "cfg": req.cfg,
         "denoise": req.denoise,
@@ -357,12 +368,21 @@ def _worker():
         try:
             params = _json(job["params"])
             settings = params.get("settings") or {}
+            prompt = job["prompt"]
+            ar = params.get("aspect_ratio") or ""
+            if ar == "auto" and params.get("image_url"):
+                # API gives us no angle — nudge the model with the input dims.
+                w, h = _image_size(params["image_url"])
+                prompt += (
+                    f"\nMatch the aspect ratio of the reference image ({w}x{h}px)."
+                )
             image_bytes = or_.generate(
                 model=job["model"],
-                prompt=job["prompt"],
+                prompt=prompt,
                 image_url=params.get("image_url"),
                 api_key=api_key,
                 seed=params.get("seed"),
+                aspect_ratio=ar or None,
             )
             data = _resize(image_bytes, params.get("width"), params.get("height"))
             path = _save_bytes(data, "png")

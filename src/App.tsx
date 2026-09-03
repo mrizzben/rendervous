@@ -5,6 +5,7 @@ import type {
   ProjectSummary,
   Revision,
   Settings,
+  AspectRatio,
 } from "./api";
 import {
   createProject,
@@ -17,10 +18,12 @@ import {
   getProject,
   hasUserKey,
   listProjects,
+  measureImage,
   pollUntil,
   restoreRevision,
   saveKey,
   shortModel,
+  fmtPrice,
   uploadDesign,
 } from "./api";
 import CanvasStage from "./components/CanvasStage";
@@ -30,7 +33,7 @@ import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
 
-const RECOMMENDED_ID = "google/gemini-2.5-flash-image";
+const RECOMMENDED_ID = "bytedance-seed/seedream-5-0-pro";
 
 const DEFAULT_SETTINGS: Settings = {
   fidelity: 90,
@@ -60,6 +63,9 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [deleting, setDeleting] = useState<Set<number>>(new Set());
   const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [designRatio, setDesignRatio] = useState<AspectRatio | "auto" | null>(
+    null,
+  );
 
   const sortedModels = useMemo(
     () =>
@@ -103,7 +109,7 @@ export default function App() {
 
   useEffect(() => {
     setCompareIds([]);
-  }, [designId, projectId]);
+  }, [designId, projectId, designRatio]);
 
   useEffect(() => {
     if (!busy) return;
@@ -148,11 +154,11 @@ export default function App() {
     setBanner("");
     try {
       const isFirst = designs.length === 0;
-      const d = await uploadDesign(
-        projectId,
-        isFirst ? "Reference" : file.name,
-        file,
-      );
+      const [d, dims] = await Promise.all([
+        uploadDesign(projectId, isFirst ? "Reference" : file.name, file),
+        measureImage(file).catch(() => null),
+      ]);
+      setDesignRatio(dims?.ratio ?? null);
       const fresh = await getProject(projectId);
       const dd = fresh.designs.find((x) => x.id === d.id);
       if (dd && dd.visualizations.length === 0) {
@@ -187,6 +193,7 @@ export default function App() {
         visualization_id: viz.id,
         parent_revision_id: parentOverride ?? currentId ?? undefined,
         settings,
+        aspect_ratio: designRatio ?? "auto",
       });
       const out = await pollUntil(
         () => getJob(job_id),
@@ -297,10 +304,7 @@ export default function App() {
             )}
             {sortedModels.map((m) => (
               <option key={m.id} value={m.id}>
-                {shortModel(m.id)} ·{" "}
-                {m.image_price == null
-                  ? "—"
-                  : `$${Number(m.image_price).toFixed(Number(m.image_price) < 0.001 ? 5 : 3)}/img`}{" "}
+                {shortModel(m.id)} · {fmtPrice(m.price_usd, m.price_unit)}
                 {m.recommended ? "★" : ""}
               </option>
             ))}
