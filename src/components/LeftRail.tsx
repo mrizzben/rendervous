@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { Design, ProjectSummary } from "../api";
+import { ACCEPTED_LIST, ACCEPTED_TYPES } from "../api";
 
 interface LeftRailProps {
   projects: ProjectSummary[];
@@ -31,7 +32,7 @@ export default function LeftRail({
   const pickFile = (f: File | undefined | null) => {
     setErr("");
     if (!f) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
+    if (!ACCEPTED_LIST.includes(f.type)) {
       setErr("Only JPEG, PNG or WebP images.");
       return;
     }
@@ -126,7 +127,7 @@ export default function LeftRail({
         <input
           ref={fileRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept={ACCEPTED_TYPES}
           style={{ display: "none" }}
           onChange={(e) => {
             pickFile(e.target.files?.[0]);
