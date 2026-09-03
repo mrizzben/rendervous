@@ -1,0 +1,74 @@
+"""Build the generation prompt from the configurable template in prompts.json.
+
+PLAN.md §9: the prompt establishes a strict hierarchy (geometry > camera >
+materials > lighting > environment > photography) and the reference geometry is
+authoritative. The template lives in prompts.json so it is not hardcoded.
+Defaults match UI.md (fidelity default strict, daylight, original materials,
+no environment) — the UI sends explicit values and settings merge onto these.
+"""
+
+import json
+import os
+
+_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts.json")
+_cfg = None
+
+DEFAULTS = {
+    "fidelity": 90,
+    "lighting": "daylight",
+    "material": "original",
+    "environment": "none",
+}
+
+
+def _load():
+    global _cfg
+    if _cfg is None:
+        with open(_PATH) as f:
+            _cfg = json.load(f)
+    return _cfg
+
+
+def fidelity_level(fidelity):
+    """Map the 0..100 fidelity slider to a restriction tier (UI.md)."""
+    if fidelity is None:
+        fidelity = DEFAULTS["fidelity"]
+    if fidelity >= 80:
+        return "strict"
+    if fidelity >= 41:
+        return "medium"
+    return "creative"
+
+
+def _section(presets_name, base_name, key):
+    cfg = _load()
+    base = cfg["sections"][base_name]
+    extra = cfg["sections"][presets_name].get(key, "")
+    return base + ("\n" + extra if extra else "")
+
+
+def build_prompt(settings):
+    """settings: {fidelity, lighting, material, environment, custom_instruction,
+    negative_prompt} -> assembled prompt string."""
+    cfg = _load()
+    s = dict(DEFAULTS)
+    s.update(settings or {})
+
+    extras = []
+    if s.get("custom_instruction"):
+        extras.append("ADDITIONAL INSTRUCTION: " + s["custom_instruction"])
+    if s.get("negative_prompt"):
+        extras.append("Avoid: " + s["negative_prompt"])
+
+    return cfg["template"].format(
+        geometry=cfg["sections"]["geometry"],
+        camera=cfg["sections"]["camera"],
+        materials=_section("materials_presets", "materials_base", s["material"]),
+        lighting=_section("lighting_presets", "lighting_base", s["lighting"]),
+        environment=_section(
+            "environment_presets", "environment_base", s["environment"]
+        ),
+        photography=cfg["sections"]["photography"],
+        restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
+        extra="\n\n".join(extras),
+    )

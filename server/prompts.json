@@ -1,0 +1,37 @@
+{
+  "template": "Transform the supplied architectural 3D model into a photorealistic photograph.\n\nHIGHEST PRIORITY — GEOMETRY:\nThe reference model is the authoritative source of truth for the architecture.\n\nPreserve its geometry exactly. Treat every visible architectural element as fixed.\n\n{geometry}\n\nSECOND PRIORITY — CAMERA:\n{camera}\n\nTHIRD PRIORITY — MATERIALS:\n{materials}\n\nFOURTH PRIORITY — LIGHTING:\n{lighting}\n\nFIFTH PRIORITY — ENVIRONMENT:\n{environment}\n\nSIXTH PRIORITY — PHOTOGRAPHY:\n{photography}\n\n{restriction}\n\n{extra}",
+  "sections": {
+    "geometry": "Maintain:\n- building massing and proportions\n- number of floors\n- roof geometry\n- wall positions\n- window and door positions and dimensions\n- columns and structural elements\n- balconies and terraces\n- openings\n- stairs\n- major architectural features",
+    "camera": "Preserve the exact camera position, viewing direction, perspective, framing and composition of the reference.",
+    "materials_base": "Replace the simple/default model materials with physically realistic materials appropriate to the existing surfaces.",
+    "materials_presets": {
+      "original": "",
+      "concrete": "Prefer architectural concrete: smooth board-formed surfaces, subtle formwork texture, realistic weathering and stains.",
+      "wood": "Use warm natural wood: visible grain, realistic finish, timber cladding or frames where the design suggests them.",
+      "stone": "Use natural stone: realistic masonry, joints, texture and color variation.",
+      "custom": ""
+    },
+    "lighting_base": "Create physically plausible natural lighting, realistic indirect illumination, contact shadows, reflections and ambient occlusion.",
+    "lighting_presets": {
+      "daylight": "Clear late-morning daylight: bright natural sun, crisp soft shadows, blue sky with light clouds.",
+      "overcast": "Overcast sky: soft diffused daylight, gentle even shadows, muted neutral atmosphere.",
+      "golden_hour": "Golden hour: warm low-angle sunlight, long soft shadows, warm amber highlights and haze.",
+      "sunset": "Sunset: dramatic warm twilight, deep orange to pink sky, long shadows falling into dusk.",
+      "night": "Night scene: deep blue twilight, moonlight, warm interior light spilling from the windows."
+    },
+    "environment_base": "Add realistic landscaping, vegetation, sky and environmental details only where they do not obscure or modify the building geometry.",
+    "environment_presets": {
+      "none": "Keep the surroundings minimal and neutral; do not add vegetation or scenery.",
+      "tropical": "Tropical setting: dense palm and broadleaf planting, pools, warm humid atmosphere.",
+      "urban": "Urban setting: streetscape, pavement, neighboring buildings, urban planting.",
+      "forest": "Forest setting: surrounding trees and woodland framing the site edges.",
+      "custom": ""
+    },
+    "photography": "Make the result resemble a professional architectural photograph with realistic lens characteristics, exposure, depth, texture and color response."
+  },
+  "fidelity": {
+    "strict": "ABSOLUTE RESTRICTION:\nDo not redesign the building.\nDo not modify its geometry.\nDo not change dimensions or proportions.\nDo not add or remove architectural elements.\nDo not change the number or position of windows, doors, floors, columns, balconies, roofs or openings.\n\nThe final image should be recognizable as the exact same building shown in the reference, only rendered as if it physically existed and had been professionally photographed.\nGeometry fidelity is more important than visual creativity.",
+    "medium": "RESTRICTION:\nPreserve the building core: massing, proportions, floor count, roof geometry and major openings. Surface materials, color, landscaping and atmosphere may be interpreted more freely while the architecture stays recognizable.",
+    "creative": "GUIDANCE:\nPreserve the overall massing and proportions of the reference, but freely reimagine materials, details, environment and atmosphere for an artistic result."
+  }
+}
