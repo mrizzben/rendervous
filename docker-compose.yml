@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
+    # No host port: reachable only by the frontend container
+    # on the compose network.
     volumes:
       - ./data:/app/data
     environment:
