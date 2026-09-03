@@ -7,14 +7,14 @@ call site and params always bound as a tuple — nothing interpolates user input
 into SQL strings.
 
 Schema mirrors PLAN.md §19: Project -> Design -> Visualization -> Revision,
-plus jobs (async generation) and cache (OpenRouter model list).
+plus jobs (async generation). The OpenRouter model list is a bundled static
+file (server/models_catalog.json), not DB state.
 """
 
 import contextlib
 import os
 import sqlite3
 import threading
-import time
 import uuid
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,11 +70,6 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   completed_at TEXT
 );
-CREATE TABLE IF NOT EXISTS cache (
-  key TEXT PRIMARY KEY,
-  payload TEXT NOT NULL,
-  fetched_at TEXT NOT NULL
-);
 """
 
 
@@ -83,7 +78,12 @@ def conn() -> sqlite3.Connection:
     if _conn is None:
         with _lock:
             if _conn is None:
-                os.makedirs(IMAGES_DIR, exist_ok=True)
+                try:
+                    os.makedirs(IMAGES_DIR, exist_ok=True)
+                except OSError as e:
+                    raise RuntimeError(
+                        f"cannot create data dir {IMAGES_DIR}: {e}"
+                    ) from e
                 _conn = sqlite3.connect(DB_PATH, check_same_thread=False)
                 _conn.row_factory = sqlite3.Row
                 _conn.execute("PRAGMA foreign_keys = ON")
@@ -341,31 +341,6 @@ def set_job_failed(job_id: int, error: str):
             "UPDATE jobs SET status='failed', error=?, completed_at=datetime('now')"
             " WHERE id=?",
             (error, job_id),
-        )
-        conn().commit()
-
-
-# ------------------------------------------------------------------- cache
-
-
-def get_cache(key: str):
-    """Returns (payload, fetched_at_epoch) or None."""
-    with _lock:
-        row = (
-            conn()
-            .execute("SELECT payload, fetched_at FROM cache WHERE key=?", (key,))
-            .fetchone()
-        )
-        return (row["payload"], int(row["fetched_at"])) if row else None
-
-
-def set_cache(key: str, payload: str):
-    with _lock:
-        conn().execute(
-            "INSERT INTO cache(key, payload, fetched_at) VALUES (?,?,?)"
-            " ON CONFLICT(key) DO UPDATE SET payload=excluded.payload,"
-            " fetched_at=excluded.fetched_at",
-            (key, payload, str(int(time.time()))),
         )
         conn().commit()
 

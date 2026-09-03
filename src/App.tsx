@@ -84,7 +84,7 @@ export default function App() {
     getHealth()
       .then((h) => setServerKey(!!h.key_configured))
       .catch(() => setServerKey(false));
-    getModels(true)
+    getModels()
       .then(setModels)
       .catch((e) => setBanner(String(e instanceof Error ? e.message : e)));
     listProjects()

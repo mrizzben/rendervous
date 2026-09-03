@@ -164,26 +164,15 @@ async function jfetch<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function qs(params: Record<string, string | number | undefined>): string {
-  const parts = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== "")
-    .map(
-      ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
-    );
-  return parts.length ? `?${parts.join("&")}` : "";
-}
-
 // --- endpoints ----------------------------------------------------------------
 
 export function getHealth(): Promise<Health> {
   return jfetch<Health>("/api/health");
 }
 
-export function getModels(refresh = false): Promise<ModelInfo[]> {
+export function getModels(): Promise<ModelInfo[]> {
   // backend wraps the list: { models: [...] }
-  return jfetch<{ models: ModelInfo[] }>(
-    `/api/models${qs({ refresh: refresh ? 1 : undefined })}`,
-  ).then((r) => r.models);
+  return jfetch<{ models: ModelInfo[] }>("/api/models").then((r) => r.models);
 }
 
 export function generate(req: GenerationRequest): Promise<{ job_id: number }> {

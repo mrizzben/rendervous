@@ -5,12 +5,12 @@ Async generation via a single background worker thread consuming a job queue.
 """
 
 import base64
-import contextlib
 import io
 import json
 import os
 import queue
 import threading
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -35,6 +35,14 @@ app.mount("/images", StaticFiles(directory=db.IMAGES_DIR), name="images")
 # ------------------------------------------------------------------ helpers
 
 
+def _json(text: str) -> dict:
+    """Parse a stored JSON blob; corrupt/empty rows fall back to {}."""
+    try:
+        return json.loads(text or "{}")
+    except (ValueError, TypeError):
+        return {}
+
+
 def _image_url(path: str) -> str:
     """DB image_path -> client-visible /images/{filename} URL, or ''."""
     if not path:
@@ -50,8 +58,13 @@ def _data_url(path: str) -> str:
     fetch. The browser-facing /images URL is for humans, not for the API.
     """
     full = os.path.join(db.IMAGES_DIR, os.path.basename(path))
-    with open(full, "rb") as f:
-        raw = f.read()
+    try:
+        with open(full, "rb") as f:
+            raw = f.read()
+    except OSError as e:
+        # Missing/corrupt reference image: fail the job with a clear message
+        # instead of a raw traceback surface in the job UI.
+        raise or_.OpenRouterError(f"reference image unreadable: {e}") from e
     ext = path.rsplit(".", 1)[-1].lower() if "." in path else "png"
     mime = {
         "png": "image/png",
@@ -65,8 +78,11 @@ def _data_url(path: str) -> str:
 def _save_bytes(data: bytes, ext: str = "png") -> str:
     """Persist raw bytes under data/images and return the relative path."""
     fname = db.new_image_path(ext)
-    with open(os.path.join(db.IMAGES_DIR, fname), "wb") as f:
-        f.write(data)
+    try:
+        with open(os.path.join(db.IMAGES_DIR, fname), "wb") as f:
+            f.write(data)
+    except OSError as e:
+        raise or_.OpenRouterError(f"could not save image: {e}") from e
     return fname
 
 
@@ -130,16 +146,9 @@ def health():
 
 
 @app.get("/api/models")
-def get_models(
-    refresh: int = 0,
-    api_key: str | None = None,
-    x_openrouter_key: str | None = Header(default=None),
-):
+def get_models():
     try:
-        models = or_.list_models(
-            api_key=api_key or x_openrouter_key, force=bool(refresh)
-        )
-        return {"models": models}
+        return {"models": or_.list_models()}
     except or_.OpenRouterError as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
 
@@ -193,7 +202,7 @@ def get_job(job_id: int):
     job = db.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    params = json.loads(job["params"] or "{}")
+    params = _json(job["params"])
     return {
         "id": job["id"],
         "status": job["status"],
@@ -249,7 +258,7 @@ def project_tree(project_id: int):
                         "label": r["label"],
                         "prompt": r["prompt"],
                         "model": r["model"],
-                        "params": json.loads(r["params"] or "{}"),
+                        "params": _json(r["params"]),
                         "image_url": _image_url(r["image_path"]),
                         "created_at": r["created_at"],
                     }
@@ -258,7 +267,7 @@ def project_tree(project_id: int):
                 {
                     "id": v["id"],
                     "name": v["name"],
-                    "settings": json.loads(v["settings"] or "{}"),
+                    "settings": _json(v["settings"]),
                     "current_revision_id": v["current_revision_id"],
                     "revisions": revisions,
                 }
@@ -326,8 +335,7 @@ def delete_revision(revision_id: int):
     rev = db.delete_revision(revision_id)
     if not rev:
         raise HTTPException(status_code=404, detail="revision not found")
-    with contextlib.suppress(OSError):
-        os.remove(os.path.join(db.IMAGES_DIR, rev["image_path"]))
+    Path(os.path.join(db.IMAGES_DIR, rev["image_path"])).unlink(missing_ok=True)
     return {"ok": True}
 
 
@@ -347,7 +355,7 @@ def _worker():
             continue
         db.set_job_running(job_id)
         try:
-            params = json.loads(job["params"] or "{}")
+            params = _json(job["params"])
             settings = params.get("settings") or {}
             image_bytes = or_.generate(
                 model=job["model"],
