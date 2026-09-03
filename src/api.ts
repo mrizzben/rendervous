@@ -280,7 +280,7 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number];
  *  When `tol` is given and the nearest ratio is farther than `tol` (log
  *  distance), returns "auto" instead — degenerate inputs get a free-form
  *  match via prompt hint rather than a forced, visibly-wrong snap. */
-function closestAspectRatio(
+export function closestAspectRatio(
   width: number,
   height: number,
   tol = Infinity,
