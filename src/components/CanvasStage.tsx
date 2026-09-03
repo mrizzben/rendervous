@@ -1,4 +1,6 @@
 import { useRef } from "react";
+import { ACCEPTED_TYPES } from "../api";
+import useSplit from "./useSplit";
 
 interface CanvasStageProps {
   projectId: number | null;
@@ -22,14 +24,7 @@ export default function CanvasStage({
   onCreateProject,
 }: CanvasStageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  const setSplit = (clientX: number) => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const pct = ((clientX - r.left) / r.width) * 100;
-    el.style.setProperty("--p", `${Math.min(100, Math.max(0, pct))}%`);
-  };
+  const { set: setSplit } = useSplit<HTMLDivElement>();
 
   const dropZone = (
     <div
@@ -65,7 +60,7 @@ export default function CanvasStage({
             Browse files
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept={ACCEPTED_TYPES}
               style={{ display: "none" }}
               onChange={(e) => {
                 onUpload(e.target.files?.[0] ?? null);

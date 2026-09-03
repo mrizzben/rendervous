@@ -21,14 +21,13 @@ import {
   measureImage,
   pollUntil,
   restoreRevision,
-  saveKey,
   shortModel,
-  fmtPrice,
   uploadDesign,
 } from "./api";
 import CanvasStage from "./components/CanvasStage";
 import CompareView from "./components/CompareView";
 import Filmstrip from "./components/Filmstrip";
+import Header from "./components/Header";
 import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
@@ -47,9 +46,6 @@ const DEFAULT_SETTINGS: Settings = {
 export default function App() {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelId, setModelId] = useState<string>(RECOMMENDED_ID);
-  const [apiKey, setApiKey] = useState(
-    () => localStorage.getItem("rendervous_api_key") ?? "",
-  );
   const [serverKey, setServerKey] = useState(false);
   const [banner, setBanner] = useState("");
 
@@ -67,14 +63,6 @@ export default function App() {
     null,
   );
 
-  const sortedModels = useMemo(
-    () =>
-      [...models].sort((a, b) => {
-        if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
-        return a.id.localeCompare(b.id);
-      }),
-    [models],
-  );
   const model = useMemo(
     () => models.find((m) => m.id === modelId) ?? null,
     [models, modelId],
@@ -92,10 +80,10 @@ export default function App() {
       .catch(() => setServerKey(false));
     getModels()
       .then(setModels)
-      .catch((e) => setBanner(String(e instanceof Error ? e.message : e)));
+      .catch((e) => fail(e));
     listProjects()
       .then(setProjects)
-      .catch((e) => setBanner(String(e instanceof Error ? e.message : e)));
+      .catch((e) => fail(e));
   }, []);
 
   // keep a valid design selected after project/state changes
@@ -122,6 +110,10 @@ export default function App() {
     return () => clearInterval(iv);
   }, [busy]);
 
+  // one shared catch: show the error message in the banner
+  const fail = (e: unknown) =>
+    setBanner(e instanceof Error ? e.message : String(e));
+
   const loadProject = async (id: number) => {
     setProjectId(id);
     setDesignId(null);
@@ -129,7 +121,7 @@ export default function App() {
       const d = await getProject(id);
       setDesigns(d.designs);
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     }
   };
 
@@ -145,7 +137,7 @@ export default function App() {
       setProjects((prev) => [...prev, p]);
       await loadProject(p.id);
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     }
   };
 
@@ -167,7 +159,7 @@ export default function App() {
       await reload();
       setDesignId(d.id);
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     }
   };
 
@@ -205,7 +197,7 @@ export default function App() {
       }
       await reload();
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     } finally {
       setBusy(false);
     }
@@ -217,7 +209,7 @@ export default function App() {
       await restoreRevision(id);
       await reload();
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     }
   };
 
@@ -230,7 +222,7 @@ export default function App() {
       await deleteRevision(id);
       await reload();
     } catch (e) {
-      setBanner(String(e instanceof Error ? e.message : e));
+      fail(e);
     } finally {
       setDeleting((prev) => {
         const n = new Set(prev);
@@ -264,53 +256,12 @@ export default function App() {
 
   return (
     <div className="studio">
-      <header className="header">
-        <div className="brand">
-          <h1>
-            Render<em>vous</em>
-          </h1>
-          <small>architectural visualization studio</small>
-        </div>
-        <div className="grow" />
-        <div
-          className="keybox"
-          title={
-            hasUserKey()
-              ? "Your OpenRouter key (stored in this browser)"
-              : "Set your OpenRouter API key to render"
-          }
-        >
-          <span
-            className={`keydot ${hasUserKey() || serverKey ? "ok" : "missing"}`}
-          />
-          <input
-            type="password"
-            placeholder="OpenRouter API key"
-            value={apiKey}
-            onChange={(e) => {
-              setApiKey(e.target.value);
-              saveKey(e.target.value);
-            }}
-          />
-        </div>
-        <div className="modelbox">
-          <select
-            value={modelId}
-            onChange={(e) => setModelId(e.target.value)}
-            title="OpenRouter image model used as the render engine"
-          >
-            {models.length === 0 && (
-              <option value="">loading render engines…</option>
-            )}
-            {sortedModels.map((m) => (
-              <option key={m.id} value={m.id}>
-                {shortModel(m.id)} · {fmtPrice(m.price_usd, m.price_unit)}
-                {m.recommended ? "★" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
+      <Header
+        models={models}
+        modelId={modelId}
+        onModelChange={setModelId}
+        serverKey={serverKey}
+      />
 
       {shownBanner && <div className="banner-error">{shownBanner}</div>}
 

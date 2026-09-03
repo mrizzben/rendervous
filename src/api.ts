@@ -146,6 +146,18 @@ export function hasUserKey(): boolean {
 
 // --- helpers ----------------------------------------------------------------
 
+/** Throw a descriptive Error for a non-2xx response (backend {detail|error}). */
+async function parseError(res: Response): Promise<never> {
+  let detail = "";
+  try {
+    const j = await res.json();
+    detail = j.detail ?? j.error ?? JSON.stringify(j);
+  } catch {
+    detail = res.statusText;
+  }
+  throw new Error(`${res.status} ${detail}`);
+}
+
 async function jfetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -155,16 +167,7 @@ async function jfetch<T>(url: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  if (!res.ok) {
-    let detail = "";
-    try {
-      const j = await res.json();
-      detail = j.detail ?? j.error ?? JSON.stringify(j);
-    } catch {
-      detail = res.statusText;
-    }
-    throw new Error(`${res.status} ${detail}`);
-  }
+  if (!res.ok) await parseError(res);
   return res.json() as Promise<T>;
 }
 
@@ -218,16 +221,7 @@ export function uploadDesign(
     body: fd,
     headers: authHeaders(),
   }).then(async (res) => {
-    if (!res.ok) {
-      let detail: string;
-      try {
-        const j = await res.json();
-        detail = j.detail ?? JSON.stringify(j);
-      } catch {
-        detail = res.statusText;
-      }
-      throw new Error(`${res.status} ${detail}`);
-    }
+    if (!res.ok) await parseError(res);
     return res.json() as Promise<ApiDesign>;
   });
 }
@@ -286,7 +280,7 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number];
  *  When `tol` is given and the nearest ratio is farther than `tol` (log
  *  distance), returns "auto" instead — degenerate inputs get a free-form
  *  match via prompt hint rather than a forced, visibly-wrong snap. */
-export function closestAspectRatio(
+function closestAspectRatio(
   width: number,
   height: number,
   tol = Infinity,
@@ -332,46 +326,10 @@ export function measureImage(
 
 // --- file -> base64 data URL (client-side, capped at 2048px) ---------------
 
-const MAX_SIDE = 2048;
-const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-
-export function acceptedImage(file: File): boolean {
-  return ACCEPTED.includes(file.type);
-}
-
-export function toDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("Unsupported or corrupt image"));
-      img.onload = () => {
-        const scale =
-          Math.max(img.width, img.height) > MAX_SIDE
-            ? MAX_SIDE / Math.max(img.width, img.height)
-            : 1;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas unavailable"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(
-          canvas.toDataURL(
-            file.type === "image/webp" ? "image/png" : file.type,
-            0.95,
-          ),
-        );
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
+// File types the app accepts for design imports; shared with <input accept>
+// and the upload validation in LeftRail.
+export const ACCEPTED_LIST = ["image/jpeg", "image/png", "image/webp"];
+export const ACCEPTED_TYPES = ACCEPTED_LIST.join(",");
 
 // --- polling ----------------------------------------------------------------
 
@@ -388,7 +346,7 @@ export async function pollUntil<T>(
   }
 }
 
-export function wait(ms: number): Promise<void> {
+function wait(ms: number): Promise<void> {
   return new Promise((res) => setTimeout(res, ms));
 }
 
@@ -426,5 +384,4 @@ export function fmtDate(iso: string): string {
   return isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
-export interface ApiDesignOut extends ApiDesign {}
-export type { ApiDesign, ApiViz };
+export type { ApiDesign };

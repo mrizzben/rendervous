@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { Revision } from '../api';
 import { fmtDate } from '../api';
+import useSplit from './useSplit';
 
 interface CompareProps {
   a: Revision;
@@ -10,14 +11,7 @@ interface CompareProps {
 
 export default function CompareView({ a, b, currentId }: CompareProps) {
   const ref = useRef<HTMLDivElement>(null);
-
-  const set = (clientX: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const pct = ((clientX - r.left) / r.width) * 100;
-    el.style.setProperty('--p', `${Math.min(100, Math.max(0, pct))}%`);
-  };
+  const { set } = useSplit<HTMLDivElement>();
 
   return (
     <div className="compare-wrap">
