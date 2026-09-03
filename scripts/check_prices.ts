@@ -1,13 +1,10 @@
 // Self-check for price formatting (node scripts/check_prices.ts).
 // Values mirror the real catalog (server/models_catalog.json) and OpenRouter's
 // per-unit display (image / megapixel / per-M-tokens).
+import assert from "node:assert";
 import { fmtPrice } from "../src/api.ts";
 
-function eq(actual: string, want: string): void {
-  if (actual !== want) {
-    throw new Error(`fmtPrice: got "${actual}", want "${want}"`);
-  }
-}
+const eq = assert.equal;
 
 // unit=image (openrouter page: "$0.045 per image")
 eq(fmtPrice(0.045, "image"), "$0.045/img");
