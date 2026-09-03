@@ -1,5 +1,5 @@
 {
-  "template": "Transform the supplied architectural 3D model into a photorealistic photograph.\n\nHIGHEST PRIORITY — GEOMETRY:\nThe reference model is the authoritative source of truth for the architecture.\n\nPreserve its geometry exactly. Treat every visible architectural element as fixed.\n\n{geometry}\n\nSECOND PRIORITY — CAMERA:\n{camera}\n\nTHIRD PRIORITY — MATERIALS:\n{materials}\n\nFOURTH PRIORITY — LIGHTING:\n{lighting}\n\nFIFTH PRIORITY — ENVIRONMENT:\n{environment}\n\nSIXTH PRIORITY — PHOTOGRAPHY:\n{photography}\n\n{restriction}\n\n{extra}",
+  "template": "Transform the supplied architectural 3D model into a photorealistic photograph.\n\nHIGHEST PRIORITY — GEOMETRY:\nThe reference model is the authoritative source of truth for the architecture.\n\nPreserve its geometry exactly. Treat every visible architectural element as fixed.\n\n{geometry}\n\nSECOND PRIORITY — CAMERA:\n{camera}\n\nTHIRD PRIORITY — MATERIALS:\n{materials}\n\nFOURTH PRIORITY — LIGHTING:\n{lighting}\n\nFIFTH PRIORITY — ENVIRONMENT:\n{environment}\n\nSIXTH PRIORITY — PHOTOGRAPHY:\n{style}\n\n{restriction}\n\n{extra}",
   "sections": {
     "geometry": "Maintain:\n- building massing and proportions\n- number of floors\n- roof geometry\n- wall positions\n- window and door positions and dimensions\n- columns and structural elements\n- balconies and terraces\n- openings\n- stairs\n- major architectural features",
     "camera": "Preserve the exact camera position, viewing direction, perspective, framing and composition of the reference.",
@@ -27,7 +27,13 @@
       "forest": "Forest setting: surrounding trees and woodland framing the site edges.",
       "custom": ""
     },
-    "photography": "Make the result resemble a professional architectural photograph with realistic lens characteristics, exposure, depth, texture and color response."
+    "photography": "Make the result resemble a professional architectural photograph with realistic lens characteristics, exposure, depth, texture and color response.",
+    "style_presets": {
+      "photoreal": "",
+      "editorial": "Editorial treatment: slightly muted color grade, magazine-style composition, restrained detail, quiet sky.",
+      "minimal": "Minimal treatment: sparse scene, near-empty surroundings, soft diffused light, clean restrained palette, nothing decorative competing with the architecture.",
+      "atmospheric": "Atmospheric treatment: moody light, soft haze and depth, dramatic sky, cinematic color grade while the architecture stays clearly legible."
+    }
   },
   "fidelity": {
     "strict": "ABSOLUTE RESTRICTION:\nDo not redesign the building.\nDo not modify its geometry.\nDo not change dimensions or proportions.\nDo not add or remove architectural elements.\nDo not change the number or position of windows, doors, floors, columns, balconies, roofs or openings.\n\nThe final image should be recognizable as the exact same building shown in the reference, only rendered as if it physically existed and had been professionally photographed.\nGeometry fidelity is more important than visual creativity.",

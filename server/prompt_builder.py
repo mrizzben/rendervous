@@ -15,6 +15,7 @@ _cfg = None
 
 DEFAULTS = {
     "fidelity": 90,
+    "style": "photoreal",
     "lighting": "daylight",
     "material": "original",
     "environment": "none",
@@ -68,7 +69,7 @@ def build_prompt(settings):
         environment=_section(
             "environment_presets", "environment_base", s["environment"]
         ),
-        photography=cfg["sections"]["photography"],
+        style=_section("style_presets", "photography", s["style"]),
         restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
         extra="\n\n".join(extras),
     )

@@ -1,8 +1,8 @@
 """OpenRouter client for Rendervous.
 
-Image generation happens through the chat-completions endpoint with modalities
-["image","text"] (verified live: response image is at
-message.images[0].image_url.url as a base64 data URL).
+Uses the dedicated image endpoints: GET /api/v1/images/models to list
+image-generation models, POST /api/v1/images to generate (response image is
+at data[0].b64_json). Reference images (img2img) go in input_references.
 
 Users bring their own API key: pass api_key per call; we never store it. When
 omitted we fall back to the OPENROUTER_API_KEY env var.
@@ -46,19 +46,13 @@ def _to_int(v):
         return None
 
 
-def _to_float(v):
-    """OpenRouter returns prices as strings ("0.0032"); parse to float or pass through."""
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return v
-
-
 def list_models(api_key=None, force=False):
-    """Image-capable models (image input AND image output), cached 1h.
+    """Image-generation models from the dedicated list endpoint, cached 1h.
 
     Returns list of {id, name, recommended, input_price, image_price,
-    context_length}. Sorted by recommended first, then image_price, then id.
+    context_length}. The images/models endpoint carries no pricing, so the
+    price fields are null; clients show "—" and sort by id.
+    Sorted by recommended first, then id.
     """
     key = resolve_key(api_key)
     cached = None if force else db.get_cache(MODEL_CACHE_KEY)
@@ -71,7 +65,7 @@ def list_models(api_key=None, force=False):
             pass  # corrupt cache line — fall through to a fresh fetch
 
     resp = requests.get(
-        f"{API_URL}/models",
+        f"{API_URL}/images/models",
         headers={"Authorization": f"Bearer {key}"} if key else {},
         timeout=30,
     )
@@ -80,39 +74,19 @@ def list_models(api_key=None, force=False):
             f"failed to list models: HTTP {resp.status_code} {resp.text[:300]}"
         )
 
-    models = []
-    for m in resp.json().get("data", []):
-        arch = m.get("architecture") or {}
-        in_mods = arch.get("input_modalities") or []
-        out_mods = arch.get("output_modalities") or []
-        if "image" not in in_mods or "image" not in out_mods:
-            continue
-        pricing = m.get("pricing") or {}
-        # OpenRouter returns prices as strings ("0.0032"); coerce to float
-        # so clients can do numeric math (sorting, .toFixed display).
-        def to_float(v):
-            try:
-                return float(v)
-            except (TypeError, ValueError):
-                return v
-
-        models.append(
-            {
-                "id": m["id"],
-                "name": m.get("name") or m["id"],
-                "recommended": m["id"] in RECOMMENDED,
-                "input_price": to_float(pricing.get("prompt")),
-                "image_price": to_float(pricing.get("image")),
-                "context_length": m.get("context_length"),
-            }
-        )
-    models.sort(
-        key=lambda x: (
-            not x["recommended"],
-            x["image_price"] if isinstance(x["image_price"], (int, float)) else 1e9,
-            x["id"],
-        )
-    )
+    # No modality filtering needed: this endpoint only returns image models.
+    models = [
+        {
+            "id": m["id"],
+            "name": m.get("name") or m["id"],
+            "recommended": m["id"] in RECOMMENDED,
+            "input_price": None,
+            "image_price": None,
+            "context_length": None,
+        }
+        for m in resp.json().get("data", [])
+    ]
+    models.sort(key=lambda x: (not x["recommended"], x["id"]))
     db.set_cache(MODEL_CACHE_KEY, json.dumps(models))
     return models
 
@@ -122,19 +96,13 @@ def generate(
     prompt,
     image_url=None,
     api_key=None,
-    width=None,
-    height=None,
-    steps=None,
-    cfg=None,
-    denoise=None,
     seed=None,
 ) -> bytes:
-    """Call OpenRouter image generation.
+    """Call the OpenRouter image generation endpoint (POST /images).
 
-    image_url: optional data URL of the reference image (img2img), or "" for
-    pure text-to-image. The model list guarantees image input+output support,
-    so txt2img just omits the image part.
-    Returns the decoded output PNG/JPEG bytes.
+    image_url: optional data URL of the reference image (img2img, mapped to
+    input_references), or ""/None for pure text-to-image.
+    Returns the decoded output PNG bytes (data[0].b64_json).
     """
     key = resolve_key(api_key)
     if not key:
@@ -144,27 +112,22 @@ def generate(
             "never stored."
         )
 
-    content = []
-    if image_url:
-        content.append({"type": "image_url", "image_url": {"url": image_url}})
-    content.append({"type": "text", "text": prompt})
-
     body = {
         "model": model or DEFAULT_MODEL,
-        "messages": [{"role": "user", "content": content}],
-        "modalities": ["image", "text"],
+        "prompt": prompt,
+        "n": 1,
+        "output_format": "png",
     }
-    # A1111-style knobs mapped onto the handful OpenRouter image models accept.
-    # gemini ignores unknown fields safely; we pass what applies.
-    steps_i = _to_int(steps)
-    if steps_i:
-        body["max_tokens"] = steps_i * 100
+    if image_url:
+        body["input_references"] = [
+            {"type": "image_url", "image_url": {"url": image_url}}
+        ]
     seed_i = _to_int(seed)
     if seed_i is not None and seed_i != -1:
         body["seed"] = seed_i
 
     resp = requests.post(
-        f"{API_URL}/chat/completions",
+        f"{API_URL}/images",
         headers={
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
@@ -182,15 +145,7 @@ def generate(
 
     data = resp.json()
     try:
-        images = data["choices"][0]["message"]["images"]
-        url = images[0]["image_url"]["url"]
+        b64 = data["data"][0]["b64_json"]
     except (KeyError, IndexError, TypeError) as e:
         raise OpenRouterError(f"Unexpected OpenRouter response: {e}") from e
-
-    if url.startswith("data:"):
-        b64 = url.split(",", 1)[1]
-        return base64.b64decode(b64)
-    # Remote URL (rare): fetch it.
-    img_resp = requests.get(url, timeout=60)
-    img_resp.raise_for_status()
-    return img_resp.content
+    return base64.b64decode(b64)

@@ -4,6 +4,7 @@ A1111-style Stable Diffusion WebUI clone backed by OpenRouter image models.
 Async generation via a single background worker thread consuming a job queue.
 """
 
+import base64
 import contextlib
 import io
 import json
@@ -41,6 +42,26 @@ def _image_url(path: str) -> str:
     return f"/images/{os.path.basename(path)}"
 
 
+def _data_url(path: str) -> str:
+    """DB image_path -> base64 data URL (what OpenRouter actually needs).
+
+    The design reference lives on local disk; the worker sends it to
+    OpenRouter as an inline data URL rather than a URL the provider could
+    fetch. The browser-facing /images URL is for humans, not for the API.
+    """
+    full = os.path.join(db.IMAGES_DIR, os.path.basename(path))
+    with open(full, "rb") as f:
+        raw = f.read()
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else "png"
+    mime = {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+    }.get(ext, "image/png")
+    return f"data:{mime};base64," + base64.b64encode(raw).decode()
+
+
 def _save_bytes(data: bytes, ext: str = "png") -> str:
     """Persist raw bytes under data/images and return the relative path."""
     fname = db.new_image_path(ext)
@@ -50,15 +71,16 @@ def _save_bytes(data: bytes, ext: str = "png") -> str:
 
 
 def _resize(data: bytes, width, height) -> bytes:
-    """Resize+center-crop output to width x height if either differs.
+    """Resize+center-crop output to width x height; always emit PNG.
 
-    Keeps the API honest about the requested size without much code.
+    Keeps the API honest about the requested size without much code. Also
+    normalizes provider formats (some ignore output_format and return WEBP).
     """
     if not width and not height:
         return data
     img = Image.open(io.BytesIO(data))
     w, h = width or img.width, height or img.height
-    if (img.width, img.height) == (w, h):
+    if img.format == "PNG" and (img.width, img.height) == (w, h):
         return data
     img = img.convert("RGB")
     img = img.resize((w, h), Image.LANCZOS)
@@ -133,13 +155,13 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
         prompt = prompt_builder.build_prompt(settings)
 
     # Resolve the input image: explicit image_url wins; else the design's
-    # reference image; else None (txt2img).
+    # reference image (as a base64 data URL); else None (no reference).
     image_url = req.image_url
     design = None
     if not image_url and req.design_id:
         design = db.get_design(req.design_id)
         if design:
-            image_url = _image_url(design["image_path"])
+            image_url = _data_url(design["image_path"])
 
     params = {
         "width": req.width,
@@ -332,11 +354,6 @@ def _worker():
                 prompt=job["prompt"],
                 image_url=params.get("image_url"),
                 api_key=api_key,
-                width=params.get("width"),
-                height=params.get("height"),
-                steps=params.get("steps"),
-                cfg=params.get("cfg"),
-                denoise=params.get("denoise"),
                 seed=params.get("seed"),
             )
             data = _resize(image_bytes, params.get("width"), params.get("height"))
