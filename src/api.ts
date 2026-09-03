@@ -257,9 +257,11 @@ export function wait(ms: number): Promise<void> {
 
 // --- formatting -------------------------------------------------------------
 
-export function fmtPrice(usd: number | null | undefined): string {
+export function fmtPrice(usd: number | string | null | undefined): string {
   if (usd == null) return '—';
-  return `$${usd.toFixed(usd < 0.001 ? 7 : 3)}/image`;
+  const n = Number(usd);
+  if (Number.isNaN(n)) return '—';
+  return `$${n.toFixed(n < 0.001 ? 7 : 3)}/image`;
 }
 
 export function shortModel(id: string): string {

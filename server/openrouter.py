@@ -38,6 +38,22 @@ def resolve_key(api_key):
     return os.environ.get("OPENROUTER_API_KEY", "")
 
 
+def _to_int(v):
+    """Coerce job-param values (may be floats/strings from JSON) to int or None."""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float(v):
+    """OpenRouter returns prices as strings ("0.0032"); parse to float or pass through."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return v
+
+
 def list_models(api_key=None, force=False):
     """Image-capable models (image input AND image output), cached 1h.
 
@@ -48,8 +64,11 @@ def list_models(api_key=None, force=False):
     cached = None if force else db.get_cache(MODEL_CACHE_KEY)
     if cached:
         payload, fetched_at = cached
-        if int(time.time()) - fetched_at < MODEL_CACHE_TTL:
-            return json.loads(payload)
+        try:
+            if int(time.time()) - fetched_at < MODEL_CACHE_TTL:
+                return json.loads(payload)
+        except (ValueError, TypeError):
+            pass  # corrupt cache line — fall through to a fresh fetch
 
     resp = requests.get(
         f"{API_URL}/models",
@@ -69,13 +88,21 @@ def list_models(api_key=None, force=False):
         if "image" not in in_mods or "image" not in out_mods:
             continue
         pricing = m.get("pricing") or {}
+        # OpenRouter returns prices as strings ("0.0032"); coerce to float
+        # so clients can do numeric math (sorting, .toFixed display).
+        def to_float(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return v
+
         models.append(
             {
                 "id": m["id"],
                 "name": m.get("name") or m["id"],
                 "recommended": m["id"] in RECOMMENDED,
-                "input_price": pricing.get("prompt"),
-                "image_price": pricing.get("image"),
+                "input_price": to_float(pricing.get("prompt")),
+                "image_price": to_float(pricing.get("image")),
                 "context_length": m.get("context_length"),
             }
         )
@@ -129,10 +156,12 @@ def generate(
     }
     # A1111-style knobs mapped onto the handful OpenRouter image models accept.
     # gemini ignores unknown fields safely; we pass what applies.
-    if steps:
-        body["max_tokens"] = int(steps) * 100
-    if seed is not None and seed != -1:
-        body["seed"] = int(seed)
+    steps_i = _to_int(steps)
+    if steps_i:
+        body["max_tokens"] = steps_i * 100
+    seed_i = _to_int(seed)
+    if seed_i is not None and seed_i != -1:
+        body["seed"] = seed_i
 
     resp = requests.post(
         f"{API_URL}/chat/completions",
