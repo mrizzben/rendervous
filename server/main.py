@@ -114,13 +114,9 @@ def _resize(data: bytes, width, height) -> bytes:
     return out.getvalue()
 
 
-def client_api_key(
-    header_key: str | None = None,
-    body_key: str | None = None,
-    query_key: str | None = None,
-) -> str:
-    """Per-request key, first non-empty of query/header/body, else env fallback."""
-    for k in (query_key, header_key, body_key):
+def client_api_key(header_key: str | None, body_key: str | None) -> str:
+    """Per-request key, first non-empty of header/body, else env fallback."""
+    for k in (header_key, body_key):
         if k:
             return k
     return os.environ.get("OPENROUTER_API_KEY", "")
@@ -176,7 +172,6 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
     # Resolve the input image: explicit image_url wins; else the design's
     # reference image (as a base64 data URL); else None (no reference).
     image_url = req.image_url
-    design = None
     if not image_url and req.design_id:
         design = db.get_design(req.design_id)
         if design:
