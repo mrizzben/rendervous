@@ -7,6 +7,7 @@ interface HeaderProps {
   modelId: string;
   onModelChange: (id: string) => void;
   serverKey: boolean;
+  onKeyChange?: () => void;
 }
 
 export default function Header({
@@ -14,6 +15,7 @@ export default function Header({
   modelId,
   onModelChange,
   serverKey,
+  onKeyChange,
 }: HeaderProps) {
   const [apiKey, setApiKey] = useState(() => storedKey());
   const sortedModels = useMemo(
@@ -52,6 +54,7 @@ export default function Header({
           onChange={(e) => {
             setApiKey(e.target.value);
             saveKey(e.target.value);
+            onKeyChange?.();
           }}
         />
       </div>

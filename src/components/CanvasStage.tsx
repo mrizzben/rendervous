@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { ACCEPTED_TYPES } from "../api";
 import useSplit from "./useSplit";
 
@@ -23,8 +22,7 @@ export default function CanvasStage({
   onUpload,
   onCreateProject,
 }: CanvasStageProps) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const { set: setSplit } = useSplit<HTMLDivElement>();
+  const { ref: wrapRef, set: setSplit } = useSplit<HTMLDivElement>();
 
   const dropZone = (
     <div

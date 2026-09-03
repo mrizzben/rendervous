@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import type {
   Design,
   ModelInfo,
@@ -248,6 +248,8 @@ export default function App() {
   };
   const compare = pair();
 
+  // re-render the app (so shownBanner re-evaluates) whenever the header key changes
+  const [, bumpKeyTick] = useReducer((x: number) => x + 1, 0);
   const shownBanner =
     banner ||
     (!hasUserKey() && !serverKey
@@ -261,6 +263,7 @@ export default function App() {
         modelId={modelId}
         onModelChange={setModelId}
         serverKey={serverKey}
+        onKeyChange={bumpKeyTick}
       />
 
       {shownBanner && <div className="banner-error">{shownBanner}</div>}
