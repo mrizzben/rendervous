@@ -11,7 +11,6 @@ plus jobs (async generation). The OpenRouter model list is a bundled static
 file (server/models_catalog.json), not DB state.
 """
 
-import contextlib
 import os
 import sqlite3
 import threading
@@ -90,13 +89,6 @@ def conn() -> sqlite3.Connection:
                 _conn.executescript(SCHEMA)
                 _conn.commit()
     return _conn
-
-
-@contextlib.contextmanager
-def db():
-    """All DB access goes through this lock — one writer at a time."""
-    with _lock:
-        yield conn()
 
 
 # ---------------------------------------------------------------- projects
