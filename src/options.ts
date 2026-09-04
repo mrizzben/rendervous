@@ -1,6 +1,19 @@
 // Architectural visualization presets (PLAN.md §10, UI.md).
 // Ordered as they appear in the Visualize panel.
 
+import type { Settings } from "./api";
+
+// The initial state of the Visualize panel and the target of its reset button.
+export const DEFAULT_SETTINGS: Settings = {
+  fidelity: 90,
+  style: "photoreal",
+  lighting: "daylight",
+  material: "original",
+  environment: "none",
+  lamp_temp: 3000, // Kelvin, warm white – daylight
+  custom_instruction: "",
+};
+
 export const STYLES = [
   { id: "photoreal", label: "Photoreal" },
   { id: "editorial", label: "Editorial" },

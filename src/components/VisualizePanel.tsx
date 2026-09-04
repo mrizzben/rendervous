@@ -1,5 +1,6 @@
 import type { Settings } from "../api";
 import {
+  DEFAULT_SETTINGS,
   ENVIRONMENTS,
   F_STOPS,
   FOCAL_LENGTHS,
@@ -269,6 +270,15 @@ export default function VisualizePanel({
           </div>
         </div>
       </details>
+
+      <button
+        type="button"
+        className="reset-btn"
+        onClick={() => onChange(DEFAULT_SETTINGS)}
+        disabled={busy}
+      >
+        Reset all configs to default
+      </button>
 
       <div className="ctl">
         <div className="ctl-label">

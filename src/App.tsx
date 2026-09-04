@@ -36,18 +36,9 @@ import Header from "./components/Header";
 import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
+import { DEFAULT_SETTINGS } from "./options";
 
 const RECOMMENDED_ID = "bytedance-seed/seedream-5-0-pro";
-
-const DEFAULT_SETTINGS: Settings = {
-  fidelity: 90,
-  style: "photoreal",
-  lighting: "daylight",
-  material: "original",
-  environment: "none",
-  lamp_temp: 3000, // Kelvin, warm white – daylight
-  custom_instruction: "",
-};
 
 export default function App() {
   const [models, setModels] = useState<ModelInfo[]>([]);

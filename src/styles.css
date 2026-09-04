@@ -852,6 +852,26 @@ input[type="range"]:disabled {
   line-height: 1.5;
 }
 
+.reset-btn {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+  background: none;
+  border: 1px dashed #2c323c;
+  border-radius: 7px;
+  padding: 7px 0;
+  font-size: 12px;
+  color: #8c94a2;
+  cursor: pointer;
+}
+.reset-btn:hover:not(:disabled) {
+  color: #63e6be;
+  border-color: #63e6be;
+}
+.reset-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .btn-render {
   width: 100%;
   margin-top: 2px;
