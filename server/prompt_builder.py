@@ -129,10 +129,7 @@ def _season_weather(s):
     unset/None means auto — the environment preset wording stands alone.
     """
     seasons = {
-        "summer": (
-            "Season: midsummer, with dense green foliage and full leafy "
-            "trees."
-        ),
+        "summer": ("Season: midsummer, with dense green foliage and full leafy trees."),
         "autumn": (
             "Season: autumn, with orange and red autumn foliage and some "
             "fallen leaves on the ground."
@@ -142,20 +139,15 @@ def _season_weather(s):
             "horizontal surfaces, cold muted palette."
         ),
         "spring": (
-            "Season: spring, with fresh light-green foliage and blooming "
-            "trees."
+            "Season: spring, with fresh light-green foliage and blooming trees."
         ),
     }
     weathers = {
         "clear": "Weather: clear, with no precipitation.",
         "overcast": (
-            "Weather: overcast, with a fully cloud-covered sky and soft "
-            "even light."
+            "Weather: overcast, with a fully cloud-covered sky and soft even light."
         ),
-        "fog": (
-            "Weather: light fog, with atmospheric haze increasing with "
-            "distance."
-        ),
+        "fog": ("Weather: light fog, with atmospheric haze increasing with distance."),
         "rain": (
             "Weather: light rain, with wet reflective ground surfaces and "
             "overcast light."
@@ -177,12 +169,10 @@ def _season_weather(s):
 
 _FINISHES = {
     "matte": (
-        "Material finish: matte, non-reflective surfaces with a soft "
-        "diffuse response."
+        "Material finish: matte, non-reflective surfaces with a soft diffuse response."
     ),
     "polished": (
-        "Material finish: polished, refined surfaces with crisp realistic "
-        "reflections."
+        "Material finish: polished, refined surfaces with crisp realistic reflections."
     ),
     "weathered": (
         "Material finish: weathered, aged surfaces with visible patina, "
@@ -203,9 +193,7 @@ def _material_finish(s):
 
 
 _SKY_SENTENCES = {
-    "clear_blue": (
-        "Sky: clear deep blue with excellent long-distance visibility."
-    ),
+    "clear_blue": ("Sky: clear deep blue with excellent long-distance visibility."),
     "scattered_clouds": (
         "Sky: bright blue with scattered white cumulus clouds, sunlight "
         "broken by passing clouds."
@@ -220,22 +208,43 @@ _SKY_SENTENCES = {
     ),
 }
 
+# Sky options that directly contradict a lighting preset's own sky wording,
+# per lighting preset id. Night owns the sky entirely (deep blue twilight /
+# moonlight); overcast conflicts with blue-sky options.
+# ponytail: no full contradiction matrix across all settings — only the
+# deterministic lighting-vs-sky conflicts above are suppressed; extend this
+# dict if users report more.
+_SKY_CONFLICTS = {
+    "night": frozenset(_SKY_SENTENCES),
+    "overcast": frozenset(("clear_blue", "scattered_clouds")),
+}
+
 
 def _sky_type(s):
     """Sky sentence for the LIGHTING section (the sky drives the light).
 
     (feature: sky-type) Reads s.get("sky"); None = auto — the lighting
-    preset's sky wording stands alone.
+    preset's sky wording stands alone. Skies that directly contradict the
+    lighting preset's own sky are suppressed (see _SKY_CONFLICTS): a
+    contradictory instruction is a hallucination trigger, and the house
+    pattern already gates settings by lighting (see _SUN_LIGHTINGS,
+    lamp_temp).
     """
-    sentence = _SKY_SENTENCES.get(s.get("sky"))
-    return "\n" + sentence if sentence else ""
+    sky = s.get("sky")
+    sentence = _SKY_SENTENCES.get(sky)
+    if not sentence or sky in _SKY_CONFLICTS.get(s["lighting"], ()):
+        return ""
+    return "\n" + sentence
 
 
 _GRADE_TONES = [
     (34, "subtle and restrained, with natural contrast and gentle tonal response"),
     (67, "moderately intensified, with deeper contrast and richer tones"),
-    (101, "strongly cinematic, with deep contrast, rich compressed shadows and "
-    "dramatic tonal curve"),
+    (
+        101,
+        "strongly cinematic, with deep contrast, rich compressed shadows and "
+        "dramatic tonal curve",
+    ),
 ]
 
 
@@ -326,6 +335,7 @@ def build_prompt(settings):
         + _advanced_photography(s)
         + _grade_intensity(s)
         + _saturation(s),
+        settings_scope=cfg["sections"]["settings_scope"],
         restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
         extra="\n\n".join(extras),
     )

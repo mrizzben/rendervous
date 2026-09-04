@@ -1,8 +1,8 @@
 {
-  "template": "Transform the supplied architectural 3D model into a photorealistic photograph.\n\nHIGHEST PRIORITY — GEOMETRY:\nThe reference model is the authoritative source of truth for the architecture.\n\nPreserve its geometry exactly. Treat every visible architectural element as fixed.\n\n{geometry}\n\nSECOND PRIORITY — CAMERA:\n{camera}\n\nTHIRD PRIORITY — MATERIALS:\n{materials}\n\nFOURTH PRIORITY — LIGHTING:\n{lighting}\n\nFIFTH PRIORITY — ENVIRONMENT:\n{environment}\n\nSIXTH PRIORITY — PHOTOGRAPHY:\n{style}\n\n{restriction}\n\n{extra}",
+  "template": "Transform the supplied architectural 3D model into a photorealistic photograph.\n\nHIGHEST PRIORITY — GEOMETRY:\nThe reference model is the authoritative source of truth for the architecture.\n\nPreserve its geometry exactly. Treat every visible architectural element as fixed.\n\n{geometry}\n\nSECOND PRIORITY — CAMERA:\n{camera}\n\nTHIRD PRIORITY — MATERIALS:\n{materials}\n\nFOURTH PRIORITY — LIGHTING:\n{lighting}\n\nFIFTH PRIORITY — ENVIRONMENT:\n{environment}\n\nSIXTH PRIORITY — PHOTOGRAPHY:\n{style}\n\n{settings_scope}\n\n{restriction}\n\n{extra}",
   "sections": {
     "geometry": "Maintain:\n- building massing and proportions\n- number of floors\n- roof geometry\n- wall positions\n- window and door positions and dimensions\n- columns and structural elements\n- balconies and terraces\n- openings\n- stairs\n- major architectural features",
-    "camera": "Preserve the exact camera position, viewing direction, perspective, framing and composition of the reference.",
+    "camera": "Preserve the exact camera position, viewing direction, perspective, framing and composition of the reference. Two-point perspective: keep all vertical lines of the building perfectly vertical and parallel in the image; do not tilt or converge them upward.",
     "materials_base": "Replace the simple/default model materials with physically realistic materials appropriate to the existing surfaces.",
     "materials_presets": {
       "original": "",
@@ -33,7 +33,8 @@
       "editorial": "Editorial treatment: slightly muted color grade, magazine-style composition, restrained detail, quiet sky.",
       "minimal": "Minimal treatment: sparse scene, near-empty surroundings, soft diffused light, clean restrained palette, nothing decorative competing with the architecture.",
       "atmospheric": "Atmospheric treatment: moody light, soft haze and depth, dramatic sky, cinematic color grade while the architecture stays clearly legible."
-    }
+    },
+    "settings_scope": "SETTINGS SCOPE — read carefully:\nThe finish, season, weather, sky and color settings above describe surface finish, atmosphere, surroundings and color treatment only. They never license changes to the building itself: do not add, remove, move, resize or redesign any architectural element, opening, roof, wall, window, door or structural feature, and do not reinterpret the architecture to match an atmosphere setting. Where any instruction above appears to conflict with the reference model, the reference model wins."
   },
   "fidelity": {
     "strict": "ABSOLUTE RESTRICTION:\nDo not redesign the building.\nDo not modify its geometry.\nDo not change dimensions or proportions.\nDo not add or remove architectural elements.\nDo not change the number or position of windows, doors, floors, columns, balconies, roofs or openings.\nNever produce cutaways, open-air conversions, or transparent walls: all solid roofs and walls must remain 100% solid and opaque.\nIf the building occludes the sun, sky, or environment from this camera angle, the background must remain hidden behind the architecture — never remove or modify structure to reveal environment or lighting.\n\nThe final image should be recognizable as the exact same building shown in the reference, only rendered as if it physically existed and had been professionally photographed.\nGeometry fidelity is more important than visual creativity.",

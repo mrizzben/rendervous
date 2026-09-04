@@ -1,6 +1,6 @@
 """Lamp temperature applies only for night/sunset lighting (UI.md)."""
 
-from prompt_builder import build_prompt
+from prompt_builder import _SKY_SENTENCES, build_prompt
 
 _BASE = {
     "fidelity": 90,
@@ -106,6 +106,7 @@ def test_season_weather_absent_by_default():
     assert "Season:" not in p
     assert "Weather:" not in p
 
+
 # >>> tests: material-finish (finish_ tests here) <<<
 
 
@@ -118,6 +119,7 @@ def test_finish_absent_by_default():
     p = build_prompt(_BASE)
     assert "Material finish:" not in p
 
+
 # >>> tests: sky-type (sky_ tests here) <<<
 
 
@@ -129,24 +131,22 @@ def test_sky_appended_to_lighting():
 def test_sky_absent_by_default():
     assert "Sky:" not in build_prompt({**_BASE})
 
+
 # >>> tests: grade-intensity (grade_ tests here) <<<
 
 
 def test_grade_intensity_tiers():
     p20 = build_prompt({**_BASE, "grade_intensity": 20})
     assert "subtle and restrained" in p20
-    assert "moderately intensified" in build_prompt(
-        {**_BASE, "grade_intensity": 50}
-    )
-    assert "strongly cinematic" in build_prompt(
-        {**_BASE, "grade_intensity": 90}
-    )
+    assert "moderately intensified" in build_prompt({**_BASE, "grade_intensity": 50})
+    assert "strongly cinematic" in build_prompt({**_BASE, "grade_intensity": 90})
 
 
 def test_grade_intensity_out_of_range_ignored():
     for g in (150, -5):
         p = build_prompt({**_BASE, "grade_intensity": g})
         assert "grade intensity" not in p, g
+
 
 # >>> tests: saturation (saturation_ tests here) <<<
 
@@ -169,3 +169,29 @@ def test_saturation_out_of_range_ignored():
 def test_saturation_absent_by_default():
     p = build_prompt({**_BASE})
     assert "saturation" not in p
+
+
+# --- Anti-hallucination guardrails -----------------------------------------
+
+
+def test_settings_scope_guardrail_present():
+    p = build_prompt({**_BASE, "season": "winter", "finish": "weathered"})
+    assert "the reference model wins" in p
+    assert "never license changes to the building" in p
+
+
+def test_camera_two_point_perspective():
+    assert "perfectly vertical and parallel" in build_prompt(_BASE)
+
+
+def test_sky_suppressed_for_night_lighting():
+    for sky in _SKY_SENTENCES:
+        p = build_prompt({**_BASE, "lighting": "night", "sky": sky})
+        assert "Sky:" not in p, sky
+
+
+def test_blue_skies_suppressed_for_overcast_lighting():
+    p = build_prompt({**_BASE, "lighting": "overcast", "sky": "clear_blue"})
+    assert "Sky:" not in p
+    p = build_prompt({**_BASE, "lighting": "overcast", "sky": "overcast_dramatic"})
+    assert "dramatic layered overcast clouds" in p
