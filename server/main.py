@@ -354,9 +354,7 @@ def delete_design(design_id: int):
             paths.add(r["image_path"])
     db.delete_design(design_id)
     for p in paths:
-        Path(os.path.join(db.IMAGES_DIR, os.path.basename(p))).unlink(
-            missing_ok=True
-        )
+        Path(os.path.join(db.IMAGES_DIR, os.path.basename(p))).unlink(missing_ok=True)
     return {"ok": True}
 
 

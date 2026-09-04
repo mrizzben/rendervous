@@ -161,9 +161,11 @@ def delete_project(project_id: int):
     deleted row, or None if missing. Design image files are NOT removed here
     — main.py collects them first and unlinks them after the commit."""
     with _lock:
-        row = conn().execute(
-            "SELECT image_path FROM designs WHERE project_id=?", (project_id,)
-        ).fetchall()
+        row = (
+            conn()
+            .execute("SELECT image_path FROM designs WHERE project_id=?", (project_id,))
+            .fetchall()
+        )
         conn().execute("DELETE FROM projects WHERE id=?", (project_id,))
         conn().commit()
         return row
@@ -219,9 +221,7 @@ def delete_design(design_id: int):
     (so the caller can unlink its image file), or None if missing."""
     with _lock:
         row = (
-            conn()
-            .execute("SELECT * FROM designs WHERE id=?", (design_id,))
-            .fetchone()
+            conn().execute("SELECT * FROM designs WHERE id=?", (design_id,)).fetchone()
         )
         if row:
             conn().execute("DELETE FROM designs WHERE id=?", (design_id,))
