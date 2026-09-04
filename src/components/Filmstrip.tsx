@@ -6,7 +6,6 @@ interface FilmstripProps {
   revisions: Revision[];
   currentId: number | null;
   compare: number[];
-  busy: boolean;
   deleting: Set<number>;
   onSetCurrent: (id: number) => void;
   onBranch: (id: number) => void;
@@ -18,7 +17,6 @@ export default function Filmstrip({
   revisions,
   currentId,
   compare,
-  busy,
   deleting,
   onSetCurrent,
   onBranch,
@@ -70,7 +68,6 @@ export default function Filmstrip({
               >
                 <button
                   className="fa"
-                  disabled={busy}
                   aria-label="Branch from this revision"
                   title="Branch: new render derived from this one"
                   onClick={() => onBranch(r.id)}
@@ -79,9 +76,7 @@ export default function Filmstrip({
                 </button>
                 <button
                   className={`fa ${compare.includes(r.id) ? "sel" : ""}`}
-                  disabled={
-                    busy || (compare.length >= 2 && !compare.includes(r.id))
-                  }
+                  disabled={compare.length >= 2 && !compare.includes(r.id)}
                   aria-label={
                     compare.includes(r.id)
                       ? "Remove from comparison"
@@ -94,7 +89,7 @@ export default function Filmstrip({
                 </button>
                 <button
                   className="fa danger"
-                  disabled={busy || deleting.has(r.id)}
+                  disabled={deleting.has(r.id)}
                   aria-label="Delete this revision"
                   title="Delete"
                   onClick={() => onDelete(r.id)}

@@ -14,7 +14,6 @@ interface LeftRailProps {
   projectId: number | null;
   designs: Design[];
   designId: number | null;
-  busy: boolean;
   onProject: (id: number) => void;
   onDesign: (id: number) => void;
   onNewProject: (name: string) => void;
@@ -31,7 +30,6 @@ export default function LeftRail({
   projectId,
   designs,
   designId,
-  busy,
   onProject,
   onDesign,
   onNewProject,
@@ -87,7 +85,6 @@ export default function LeftRail({
           className="sel project-sel"
           value={projectId ?? ""}
           onChange={(e) => onProject(Number(e.target.value))}
-          disabled={busy}
         >
           {projects.length === 0 && <option value="">—</option>}
           {projects.map((p) => (
@@ -115,7 +112,6 @@ export default function LeftRail({
               className="inp new-proj"
               placeholder="new project…"
               value={newName}
-              disabled={busy}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && newName.trim()) {
@@ -126,7 +122,7 @@ export default function LeftRail({
             />
             <button
               className="btn new-proj-add"
-              disabled={busy || !newName.trim()}
+              disabled={!newName.trim()}
               title="Create project"
               aria-label="Create project"
               onClick={() => {
@@ -143,7 +139,6 @@ export default function LeftRail({
           <div className="rail-manage">
             <button
               className="rail-mini"
-              disabled={busy}
               title="Rename this project"
               onClick={() => {
                 setRenameValue(activeProject!.name);
@@ -155,7 +150,6 @@ export default function LeftRail({
             </button>
             <button
               className="rail-mini"
-              disabled={busy}
               title={
                 activeProject.archived
                   ? "Restore this project to the active list"
@@ -172,7 +166,6 @@ export default function LeftRail({
             </button>
             <button
               className="rail-mini danger"
-              disabled={busy}
               title="Delete this project, its designs and renders permanently"
               onClick={() => onDeleteProject(projectId!)}
             >
@@ -185,7 +178,7 @@ export default function LeftRail({
 
       <button
         className="btn-import"
-        disabled={busy || projectId == null}
+        disabled={projectId == null}
         onClick={() => fileRef.current?.click()}
         title={
           projectId == null
@@ -238,7 +231,6 @@ export default function LeftRail({
             <div className="view-actions">
               <button
                 className="rail-mini icon-only"
-                disabled={busy}
                 aria-label={
                   d.archived ? "Restore this design" : "Archive this design"
                 }
@@ -260,7 +252,6 @@ export default function LeftRail({
               </button>
               <button
                 className="rail-mini icon-only danger"
-                disabled={busy}
                 aria-label="Delete this design and its renders permanently"
                 title="Delete this design and its renders permanently"
                 onClick={(e) => {

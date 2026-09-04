@@ -352,7 +352,6 @@ export default function App() {
           projectId={projectId}
           designs={designs}
           designId={designId}
-          busy={busy}
           onProject={loadProject}
           onDesign={setDesignId}
           onNewProject={handleNewProject}
@@ -375,7 +374,6 @@ export default function App() {
                 ? `${currentRev.label} · ${shortModel(currentRev.model ?? "model")}`
                 : null
             }
-            busy={busy}
             onUpload={handleUpload}
             onCreateProject={() => {
               const name = window.prompt(
@@ -390,7 +388,6 @@ export default function App() {
             revisions={revisions}
             currentId={currentId}
             compare={compareIds}
-            busy={busy}
             deleting={deleting}
             onSetCurrent={handleSetCurrent}
             onBranch={(id) => runRender(id)}

@@ -8,7 +8,6 @@ interface CanvasStageProps {
   referenceName: string | null;
   renderUrl: string | null;
   renderLabel: string | null;
-  busy: boolean;
   onUpload: (f: File | null) => void;
   onCreateProject: () => void;
 }
@@ -19,7 +18,6 @@ export default function CanvasStage({
   referenceName,
   renderUrl,
   renderLabel,
-  busy,
   onUpload,
   onCreateProject,
 }: CanvasStageProps) {
@@ -31,7 +29,7 @@ export default function CanvasStage({
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        if (!busy) onUpload(e.dataTransfer.files?.[0] ?? null);
+        onUpload(e.dataTransfer.files?.[0] ?? null);
       }}
     >
       {projectId == null ? (
@@ -105,7 +103,7 @@ export default function CanvasStage({
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          if (!busy) onUpload(e.dataTransfer.files?.[0] ?? null);
+          onUpload(e.dataTransfer.files?.[0] ?? null);
         }}
       >
         <img

@@ -120,7 +120,6 @@ export default function VisualizePanel({
           onChange={(e) =>
             onChange({ ...settings, fidelity: Number(e.target.value) })
           }
-          disabled={busy}
         />
         <div className="fid-scale">
           <span>CREATIVE</span>
@@ -143,8 +142,7 @@ export default function VisualizePanel({
             onChange({ ...settings, lamp_temp: Number(e.target.value) })
           }
           disabled={
-            busy ||
-            (settings.lighting !== "night" && settings.lighting !== "sunset")
+            settings.lighting !== "night" && settings.lighting !== "sunset"
           }
         />
         <div className="fid-scale">
@@ -166,7 +164,6 @@ export default function VisualizePanel({
               type="button"
               className={`chip ${!settings.sun_direction ? "active" : ""}`}
               onClick={() => set({ sun_direction: undefined })}
-              disabled={busy}
             >
               Auto
             </button>
@@ -176,7 +173,6 @@ export default function VisualizePanel({
                 type="button"
                 className={`chip ${settings.sun_direction === o.id ? "active" : ""}`}
                 onClick={() => set({ sun_direction: o.id })}
-                disabled={busy}
               >
                 {o.label}
               </button>
@@ -200,7 +196,7 @@ export default function VisualizePanel({
             step={1}
             value={settings.sun_elevation ?? 45}
             onChange={(e) => set({ sun_elevation: Number(e.target.value) })}
-            disabled={busy || !hasSun}
+            disabled={!hasSun}
           />
           <div className="fid-scale">
             <span>HORIZON 0°</span>
@@ -222,7 +218,6 @@ export default function VisualizePanel({
               type="button"
               className={`chip ${settings.focal_length == null ? "active" : ""}`}
               onClick={() => set({ focal_length: undefined })}
-              disabled={busy}
             >
               Auto
             </button>
@@ -232,7 +227,6 @@ export default function VisualizePanel({
                 type="button"
                 className={`chip ${settings.focal_length === mm ? "active" : ""}`}
                 onClick={() => set({ focal_length: mm })}
-                disabled={busy}
               >
                 {mm}mm
               </button>
@@ -252,7 +246,6 @@ export default function VisualizePanel({
               type="button"
               className={`chip ${settings.f_stop == null ? "active" : ""}`}
               onClick={() => set({ f_stop: undefined })}
-              disabled={busy}
             >
               Auto
             </button>
@@ -262,7 +255,6 @@ export default function VisualizePanel({
                 type="button"
                 className={`chip ${settings.f_stop === f ? "active" : ""}`}
                 onClick={() => set({ f_stop: f })}
-                disabled={busy}
               >
                 f/{f}
               </button>
@@ -275,7 +267,6 @@ export default function VisualizePanel({
         type="button"
         className="reset-btn"
         onClick={() => onChange(DEFAULT_SETTINGS)}
-        disabled={busy}
       >
         Reset all configs to default
       </button>
