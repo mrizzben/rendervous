@@ -100,7 +100,11 @@ export const WEATHERS = [
   { id: "snow", label: "Snow" },
 ] as const;
 
-// >>> material-finish: FINISHES chip option const here <<<
+export const FINISHES = [
+  { id: "matte", label: "Matte" },
+  { id: "polished", label: "Polished" },
+  { id: "weathered", label: "Weathered" },
+] as const;
 
 // >>> sky-type: SKIES chip option const here <<<
 

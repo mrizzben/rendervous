@@ -8,6 +8,7 @@ import {
   LAMP_TEMP_MIN,
   LIGHTINGS,
   MATERIALS,
+  FINISHES,
   STYLES,
   SEASONS,
   SUN_DIRECTIONS,
@@ -96,12 +97,91 @@ export default function VisualizePanel({
         value={settings.material}
         onChange={(v) => onChange({ ...settings, material: v })}
       />
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Finish
+          <span className="fid-val">{settings.finish ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.finish ? "" : "active"}`}
+            onClick={() => set({ finish: undefined })}
+          >
+            Auto
+          </button>
+          {FINISHES.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.finish === o.id ? "active" : ""}`}
+              onClick={() => set({ finish: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ChipGroup
         label="Environment"
         options={ENVIRONMENTS}
         value={settings.environment}
         onChange={(v) => onChange({ ...settings, environment: v })}
       />
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Season
+          <span className="fid-val">{settings.season ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.season ? "" : "active"}`}
+            onClick={() => set({ season: undefined })}
+          >
+            Auto
+          </button>
+          {SEASONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.season === o.id ? "active" : ""}`}
+              onClick={() => set({ season: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Weather
+          <span className="fid-val">{settings.weather ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.weather ? "" : "active"}`}
+            onClick={() => set({ weather: undefined })}
+          >
+            Auto
+          </button>
+          {WEATHERS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.weather === o.id ? "active" : ""}`}
+              onClick={() => set({ weather: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="ctl">
         <div className="ctl-label">
@@ -216,7 +296,7 @@ export default function VisualizePanel({
           <div className="chips">
             <button
               type="button"
-              className={`chip ${!settings.sun_direction ? "active" : ""}`}
+              className={`chip ${settings.sun_direction ? "" : "active"}`}
               onClick={() => set({ sun_direction: undefined })}
             >
               Auto
@@ -238,9 +318,9 @@ export default function VisualizePanel({
           <div className="ctl-label">
             Sun elevation
             <span className="fid-val">
-              {settings.sun_elevation != null
-                ? `${settings.sun_elevation}°`
-                : "auto"}
+              {settings.sun_elevation == null
+                ? "auto"
+                : `${settings.sun_elevation}°`}
             </span>
           </div>
           <input
@@ -262,9 +342,9 @@ export default function VisualizePanel({
           <div className="ctl-label">
             Focal length
             <span className="fid-val">
-              {settings.focal_length != null
-                ? `${settings.focal_length}mm`
-                : "auto"}
+              {settings.focal_length == null
+                ? "auto"
+                : `${settings.focal_length}mm`}
             </span>
           </div>
           <div className="chips">
@@ -292,7 +372,7 @@ export default function VisualizePanel({
           <div className="ctl-label">
             Aperture
             <span className="fid-val">
-              {settings.f_stop != null ? `f/${settings.f_stop}` : "auto"}
+              {settings.f_stop == null ? "auto" : `f/${settings.f_stop}`}
             </span>
           </div>
           <div className="chips">

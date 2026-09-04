@@ -96,7 +96,7 @@ export interface Settings {
   // --- P1 features (each branch fills ONLY its own marker line) ---
   season?: "summer" | "autumn" | "winter" | "spring";
   weather?: "clear" | "overcast" | "fog" | "rain" | "snow";
-  // >>> material-finish: finish?: "matte" | "polished" | "weathered"; here <<<
+  finish?: "matte" | "polished" | "weathered";
   // >>> sky-type: sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy"; here <<<
   // >>> grade-intensity: grade_intensity?: number; // 0-100 here <<<
   // >>> saturation: saturation?: number; // 0-100 here <<<

@@ -108,6 +108,16 @@ def test_season_weather_absent_by_default():
 
 # >>> tests: material-finish (finish_ tests here) <<<
 
+
+def test_finish_appended_to_materials():
+    p = build_prompt({**_BASE, "finish": "weathered"})
+    assert "visible patina" in p
+
+
+def test_finish_absent_by_default():
+    p = build_prompt(_BASE)
+    assert "Material finish:" not in p
+
 # >>> tests: sky-type (sky_ tests here) <<<
 
 # >>> tests: grade-intensity (grade_ tests here) <<<

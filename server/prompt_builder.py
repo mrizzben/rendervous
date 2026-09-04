@@ -175,13 +175,31 @@ def _season_weather(s):
     return "\n" + "\n".join(lines) if lines else ""
 
 
+_FINISHES = {
+    "matte": (
+        "Material finish: matte, non-reflective surfaces with a soft "
+        "diffuse response."
+    ),
+    "polished": (
+        "Material finish: polished, refined surfaces with crisp realistic "
+        "reflections."
+    ),
+    "weathered": (
+        "Material finish: weathered, aged surfaces with visible patina, "
+        "fading and staining."
+    ),
+}
+
+
 def _material_finish(s):
     """Material finish sentence for the MATERIALS section.
 
-    (feature: material-finish) Stub returns "" until its branch implements it.
-    Reads s.get("finish"): matte | polished | weathered; None = auto.
+    (feature: material-finish)
+    Reads s.get("finish"): matte | polished | weathered; None = auto — the
+    material preset wording stands alone.
     """
-    return ""
+    finish = _FINISHES.get(s.get("finish"))
+    return "\n" + finish if finish else ""
 
 
 def _sky_type(s):
