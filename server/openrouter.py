@@ -13,6 +13,7 @@ OPENROUTER_API_KEY env var.
 
 import base64
 import json
+import math
 import os
 
 import requests
@@ -29,6 +30,53 @@ CATALOG_PATH = os.path.join(os.path.dirname(__file__), "models_catalog.json")
 
 class OpenRouterError(Exception):
     """Raised when OpenRouter returns a non-200 or a malformed response."""
+
+
+# Aspect ratios the OpenRouter images endpoint accepts (first wins ties).
+ASPECT_RATIOS = (
+    "1:1",
+    "1:2",
+    "1:4",
+    "1:8",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "8:1",
+    "9:16",
+    "16:9",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "9:21",
+    "21:9",
+)
+
+
+def _ratio_value(r):
+    """Log of a ratio string's w/h. Malformed strings count as 1:1."""
+    try:
+        w, h = r.split(":")
+        return math.log(float(w) / float(h))
+    except (ValueError, ZeroDivisionError):
+        return 0.0
+
+
+def closest_aspect_ratio(width, height):
+    """Nearest supported ratio to width/height by log-distance.
+
+    Log-distance keeps 1:2 and 2:1 equal-and-opposite from 1:1. Ties go to
+    the earliest entry. Used to derive the output ratio from the reference
+    image server-side so the API param is always set, not left to a prompt
+    hint the model may ignore.
+    """
+    v = math.log(width / height)
+    return min(ASPECT_RATIOS, key=lambda r: abs(v - _ratio_value(r)))
 
 
 def resolve_key(api_key):

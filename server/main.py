@@ -425,9 +425,13 @@ def _worker():
             settings = params.get("settings") or {}
             prompt = job["prompt"]
             ar = params.get("aspect_ratio") or ""
-            if ar == "auto" and params.get("image_url"):
-                # API gives us no angle — nudge the model with the input dims.
+            if params.get("image_url"):
+                # The reference is the source of truth: derive the ratio from
+                # its actual dims and set the API param. (The client's ratio
+                # is upload-time UI state — lost on reload, stale across
+                # designs — so it only serves as a no-reference fallback.)
                 w, h = _image_size(params["image_url"])
+                ar = or_.closest_aspect_ratio(w, h)
                 prompt += (
                     f"\nMatch the aspect ratio of the reference image ({w}x{h}px)."
                 )
