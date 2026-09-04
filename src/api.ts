@@ -98,7 +98,7 @@ export interface Settings {
   weather?: "clear" | "overcast" | "fog" | "rain" | "snow";
   finish?: "matte" | "polished" | "weathered";
   sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy";
-  // >>> grade-intensity: grade_intensity?: number; // 0-100 here <<<
+  grade_intensity?: number; // 0-100, higher = more cinematic
   saturation?: number; // 0-100, 50 = natural
   custom_instruction?: string;
 }

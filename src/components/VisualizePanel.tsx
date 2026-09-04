@@ -4,6 +4,8 @@ import {
   ENVIRONMENTS,
   F_STOPS,
   FOCAL_LENGTHS,
+  GRADE_INTENSITY_MAX,
+  GRADE_INTENSITY_MIN,
   LAMP_TEMP_MAX,
   LAMP_TEMP_MIN,
   LIGHTINGS,
@@ -395,6 +397,29 @@ export default function VisualizePanel({
                 {mm}mm
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Grade intensity
+            <span className="fid-val">
+              {settings.grade_intensity == null
+                ? "auto"
+                : String(settings.grade_intensity)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={GRADE_INTENSITY_MIN}
+            max={GRADE_INTENSITY_MAX}
+            step={1}
+            value={settings.grade_intensity ?? 50}
+            onChange={(e) => set({ grade_intensity: Number(e.target.value) })}
+          />
+          <div className="fid-scale">
+            <span>SUBTLE</span>
+            <span>CINEMATIC</span>
           </div>
         </div>
 

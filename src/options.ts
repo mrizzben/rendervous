@@ -115,7 +115,10 @@ export const SKIES = [
   { id: "hazy", label: "Hazy" },
 ] as const;
 
-// >>> grade-intensity: GRADE_INTENSITY_MIN/MAX consts here <<<
+// Grade intensity for the Style presets. 0-33 subtle, 34-66 moderate,
+// 67-100 cinematic. Unset = the preset's grade wording stands alone.
+export const GRADE_INTENSITY_MIN = 0;
+export const GRADE_INTENSITY_MAX = 100;
 
 // Saturation scale for the color grade. 50 ≈ natural, 0 ≈ monochrome,
 // 100 ≈ hyper-saturated.

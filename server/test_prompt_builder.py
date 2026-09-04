@@ -131,6 +131,23 @@ def test_sky_absent_by_default():
 
 # >>> tests: grade-intensity (grade_ tests here) <<<
 
+
+def test_grade_intensity_tiers():
+    p20 = build_prompt({**_BASE, "grade_intensity": 20})
+    assert "subtle and restrained" in p20
+    assert "moderately intensified" in build_prompt(
+        {**_BASE, "grade_intensity": 50}
+    )
+    assert "strongly cinematic" in build_prompt(
+        {**_BASE, "grade_intensity": 90}
+    )
+
+
+def test_grade_intensity_out_of_range_ignored():
+    for g in (150, -5):
+        p = build_prompt({**_BASE, "grade_intensity": g})
+        assert "grade intensity" not in p, g
+
 # >>> tests: saturation (saturation_ tests here) <<<
 
 

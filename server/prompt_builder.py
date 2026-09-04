@@ -231,12 +231,26 @@ def _sky_type(s):
     return "\n" + sentence if sentence else ""
 
 
+_GRADE_TONES = [
+    (34, "subtle and restrained, with natural contrast and gentle tonal response"),
+    (67, "moderately intensified, with deeper contrast and richer tones"),
+    (101, "strongly cinematic, with deep contrast, rich compressed shadows and "
+    "dramatic tonal curve"),
+]
+
+
 def _grade_intensity(s):
     """Grade intensity sentence for the PHOTOGRAPHY section.
 
-    (feature: grade-intensity) Stub returns "" until its branch implements it.
-    Reads s.get("grade_intensity"): 0-100; None = auto (preset grade stands).
+    (feature: grade-intensity) Reads s.get("grade_intensity"): 0-100;
+    None = auto (the style preset's grade wording stands alone).
     """
+    g = s.get("grade_intensity")
+    if not isinstance(g, (int, float)) or not 0 <= g <= 100:
+        return ""
+    for upper, tone in _GRADE_TONES:
+        if g < upper:
+            return f"\nColor grade intensity: {tone}."
     return ""
 
 
