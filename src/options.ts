@@ -82,3 +82,15 @@ export const ENVIRONMENTS = [
   { id: "forest", label: "Forest" },
   { id: "custom", label: "Custom" },
 ] as const;
+
+// --- P1 features (each branch fills ONLY its own marker) -------------------
+
+// >>> season-weather: SEASONS + WEATHERS chip option consts here <<<
+
+// >>> material-finish: FINISHES chip option const here <<<
+
+// >>> sky-type: SKIES chip option const here <<<
+
+// >>> grade-intensity: GRADE_INTENSITY_MIN/MAX consts here <<<
+
+// >>> saturation: SATURATION_MIN/MAX consts here <<<

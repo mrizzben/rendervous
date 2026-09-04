@@ -77,3 +77,17 @@ def test_strict_fidelity_occlusion_guardrails():
     assert "never remove or modify structure to reveal environment" in p
     assert "remain occluded behind the architecture" in p
     assert "strictly outside the building footprint" in p
+
+
+# --- P1 feature branches: add tests ONLY below your own marker -------------
+
+
+# >>> tests: season-weather (season_/weather_ tests here) <<<
+
+# >>> tests: material-finish (finish_ tests here) <<<
+
+# >>> tests: sky-type (sky_ tests here) <<<
+
+# >>> tests: grade-intensity (grade_ tests here) <<<
+
+# >>> tests: saturation (saturation_ tests here) <<<

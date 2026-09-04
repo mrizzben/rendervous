@@ -122,6 +122,52 @@ def _advanced_photography(s):
     return f"\nShot on a {' at '.join(parts) if len(parts) == 2 else parts[0]}."
 
 
+def _season_weather(s):
+    """Season + weather sentences for the ENVIRONMENT section.
+
+    (feature: season-weather) Stub returns "" until its branch implements it.
+    Reads s.get("season") and s.get("weather"); unset/None means auto — the
+    environment preset wording stands alone.
+    """
+    return ""
+
+
+def _material_finish(s):
+    """Material finish sentence for the MATERIALS section.
+
+    (feature: material-finish) Stub returns "" until its branch implements it.
+    Reads s.get("finish"): matte | polished | weathered; None = auto.
+    """
+    return ""
+
+
+def _sky_type(s):
+    """Sky sentence for the LIGHTING section (the sky drives the light).
+
+    (feature: sky-type) Stub returns "" until its branch implements it.
+    Reads s.get("sky"); None = auto — the lighting preset's sky wording stands.
+    """
+    return ""
+
+
+def _grade_intensity(s):
+    """Grade intensity sentence for the PHOTOGRAPHY section.
+
+    (feature: grade-intensity) Stub returns "" until its branch implements it.
+    Reads s.get("grade_intensity"): 0-100; None = auto (preset grade stands).
+    """
+    return ""
+
+
+def _saturation(s):
+    """Color saturation sentence for the PHOTOGRAPHY section.
+
+    (feature: saturation) Stub returns "" until its branch implements it.
+    Reads s.get("saturation"): 0-100; None = auto (natural saturation).
+    """
+    return ""
+
+
 def build_prompt(settings):
     """settings: {fidelity, lighting, material, environment, custom_instruction,
     negative_prompt} -> assembled prompt string."""
@@ -131,6 +177,7 @@ def build_prompt(settings):
 
     lighting = _section("lighting_presets", "lighting_base", s["lighting"])
     lighting += _advanced_lighting(s)
+    lighting += _sky_type(s)
     # Lamp temperature only applies when artificial light sources dominate
     # the scene (night, sunset) — ignored for every other lighting preset.
     kelvin = s.get("lamp_temp")
@@ -160,13 +207,17 @@ def build_prompt(settings):
     return cfg["template"].format(
         geometry=cfg["sections"]["geometry"],
         camera=cfg["sections"]["camera"],
-        materials=_section("materials_presets", "materials_base", s["material"]),
+        materials=_section("materials_presets", "materials_base", s["material"])
+        + _material_finish(s),
         lighting=lighting,
         environment=_section(
             "environment_presets", "environment_base", s["environment"]
-        ),
+        )
+        + _season_weather(s),
         style=_section("style_presets", "photography", s["style"])
-        + _advanced_photography(s),
+        + _advanced_photography(s)
+        + _grade_intensity(s)
+        + _saturation(s),
         restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
         extra="\n\n".join(extras),
     )
