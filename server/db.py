@@ -71,6 +71,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   completed_at TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_designs_project ON designs(project_id);
+CREATE INDEX IF NOT EXISTS idx_visualizations_design ON visualizations(design_id);
+CREATE INDEX IF NOT EXISTS idx_revisions_viz ON revisions(visualization_id);
+CREATE INDEX IF NOT EXISTS idx_revisions_parent ON revisions(parent_revision_id);
 """
 
 
