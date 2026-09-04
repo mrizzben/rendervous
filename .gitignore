@@ -234,3 +234,9 @@ node_modules/
 
 #Agents
 .agents/
+
+# Docs  
+RESEARCH.md 
+PLAN.md 
+UI.md 
+PROMPT.md
