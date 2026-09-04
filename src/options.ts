@@ -18,6 +18,10 @@ export const LIGHTINGS = [
   { id: "night", label: "Night" },
 ] as const;
 
+// Temperature of non-natural light sources (lamps, lightbulbs), in Kelvin.
+export const LAMP_TEMP_MIN = 2700; // warm white
+export const LAMP_TEMP_MAX = 6000; // daylight
+
 export const MATERIALS = [
   { id: "original", label: "As designed" },
   { id: "concrete", label: "Concrete" },

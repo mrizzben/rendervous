@@ -25,8 +25,11 @@ DEFAULTS = {
 def _load():
     global _cfg
     if _cfg is None:
-        with open(_PATH) as f:
-            _cfg = json.load(f)
+        try:
+            with open(_PATH) as f:
+                _cfg = json.load(f)
+        except (OSError, ValueError) as e:
+            raise RuntimeError(f"prompts.json missing or invalid: {e}") from e
     return _cfg
 
 
@@ -55,6 +58,21 @@ def build_prompt(settings):
     s = dict(DEFAULTS)
     s.update(settings or {})
 
+    lighting = _section("lighting_presets", "lighting_base", s["lighting"])
+    kelvin = s.get("lamp_temp")
+    if isinstance(kelvin, (int, float)) and 1500 <= kelvin <= 10000:
+        tone = (
+            "warm amber"
+            if kelvin < 3500
+            else "neutral white"
+            if kelvin < 5000
+            else "cool slightly blue-tinted"
+        )
+        lighting += (
+            f"\nAll non-natural light sources (lamps, lightbulbs, interior "
+            f"fixtures) emit {tone} light at approximately {kelvin:.0f}K."
+        )
+
     extras = []
     if s.get("custom_instruction"):
         extras.append("ADDITIONAL INSTRUCTION: " + s["custom_instruction"])
@@ -65,7 +83,7 @@ def build_prompt(settings):
         geometry=cfg["sections"]["geometry"],
         camera=cfg["sections"]["camera"],
         materials=_section("materials_presets", "materials_base", s["material"]),
-        lighting=_section("lighting_presets", "lighting_base", s["lighting"]),
+        lighting=lighting,
         environment=_section(
             "environment_presets", "environment_base", s["environment"]
         ),

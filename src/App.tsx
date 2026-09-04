@@ -44,6 +44,7 @@ const DEFAULT_SETTINGS: Settings = {
   lighting: "daylight",
   material: "original",
   environment: "none",
+  lamp_temp: 3000, // Kelvin, warm white – daylight
   custom_instruction: "",
 };
 
@@ -243,7 +244,9 @@ export default function App() {
     const archiving = !p?.archived;
     if (
       archiving &&
-      !window.confirm(`Archive "${p?.name}"? Hide it from the project list until restored.`)
+      !window.confirm(
+        `Archive "${p?.name}"? Hide it from the project list until restored.`,
+      )
     )
       return;
     try {

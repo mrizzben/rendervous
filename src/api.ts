@@ -87,6 +87,7 @@ export interface Settings {
   lighting: "daylight" | "overcast" | "golden_hour" | "sunset" | "night";
   material: "original" | "concrete" | "wood" | "stone" | "custom";
   environment: "none" | "tropical" | "urban" | "forest" | "custom";
+  lamp_temp?: number; // Kelvin, 2700 (warm white) – 6000 (daylight)
   custom_instruction?: string;
 }
 
@@ -202,7 +203,9 @@ export function createProject(name: string): Promise<ProjectSummary> {
   });
 }
 
-export function listProjects(includeArchived = false): Promise<ProjectSummary[]> {
+export function listProjects(
+  includeArchived = false,
+): Promise<ProjectSummary[]> {
   return jfetch<ProjectSummary[]>(
     `/api/projects${includeArchived ? "?include_archived=true" : ""}`,
   );
@@ -212,7 +215,10 @@ export function getProject(id: number): Promise<ProjectDetail> {
   return jfetch<ProjectDetail>(`/api/projects/${id}`);
 }
 
-export function setProjectArchived(id: number, archived: boolean): Promise<unknown> {
+export function setProjectArchived(
+  id: number,
+  archived: boolean,
+): Promise<unknown> {
   return jfetch<unknown>(`/api/projects/${id}/archive`, {
     method: "POST",
     body: JSON.stringify({ archived }),
@@ -223,7 +229,10 @@ export function deleteProject(id: number): Promise<unknown> {
   return jfetch<unknown>(`/api/projects/${id}`, { method: "DELETE" });
 }
 
-export function setDesignArchived(id: number, archived: boolean): Promise<unknown> {
+export function setDesignArchived(
+  id: number,
+  archived: boolean,
+): Promise<unknown> {
   return jfetch<unknown>(`/api/designs/${id}/archive`, {
     method: "POST",
     body: JSON.stringify({ archived }),

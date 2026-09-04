@@ -1,5 +1,12 @@
 import type { Settings } from "../api";
-import { ENVIRONMENTS, LIGHTINGS, MATERIALS, STYLES } from "../options";
+import {
+  ENVIRONMENTS,
+  LAMP_TEMP_MAX,
+  LAMP_TEMP_MIN,
+  LIGHTINGS,
+  MATERIALS,
+  STYLES,
+} from "../options";
 
 interface VisualizePanelProps {
   settings: Settings;
@@ -106,6 +113,28 @@ export default function VisualizePanel({
         <div className="fid-scale">
           <span>CREATIVE</span>
           <span>STRICT</span>
+        </div>
+      </div>
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Lamp temperature
+          <span className="fid-val">{settings.lamp_temp ?? 3000}K</span>
+        </div>
+        <input
+          type="range"
+          min={LAMP_TEMP_MIN}
+          max={LAMP_TEMP_MAX}
+          step={100}
+          value={settings.lamp_temp ?? 3000}
+          onChange={(e) =>
+            onChange({ ...settings, lamp_temp: Number(e.target.value) })
+          }
+          disabled={busy}
+        />
+        <div className="fid-scale">
+          <span>WARM WHITE ~2700K</span>
+          <span>DAYLIGHT ~6000K</span>
         </div>
       </div>
 
