@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ModelInfo } from "../api";
 import { fmtPrice, hasUserKey, saveKey, shortModel, storedKey } from "../api";
+import { KeyIcon, MarkIcon } from "../icons";
 
 interface HeaderProps {
   models: ModelInfo[];
@@ -30,23 +31,29 @@ export default function Header({
   return (
     <header className="header">
       <div className="brand">
-        <h1>
-          Render<em>vous</em>
-        </h1>
-        <small>architectural visualization studio</small>
+        <MarkIcon size={18} className="brand-mark" />
+        <div className="brand-txt">
+          <span className="brand-name">
+            Render<em>vous</em>
+          </span>
+          <span className="brand-sub">architectural visualization studio</span>
+        </div>
       </div>
       <div className="grow" />
-      <div
-        className="keybox"
-        title={
-          hasUserKey()
-            ? "Your OpenRouter key (stored in this browser)"
-            : "Set your OpenRouter API key to render"
-        }
-      >
+
+      <label className="keybox">
         <span
           className={`keydot ${hasUserKey() || serverKey ? "ok" : "missing"}`}
+          title={
+            hasUserKey()
+              ? "Your OpenRouter key is set (stored in this browser)"
+              : serverKey
+                ? "Server key configured (OPENROUTER_API_KEY)"
+                : "No API key configured"
+          }
         />
+        <KeyIcon size={14} className="keybox-icon" />
+        <span className="keybox-label">Key</span>
         <input
           type="password"
           placeholder="OpenRouter API key"
@@ -57,8 +64,10 @@ export default function Header({
             onKeyChange?.();
           }}
         />
-      </div>
-      <div className="modelbox">
+      </label>
+
+      <label className="modelbox">
+        <span className="modelbox-label">Engine</span>
         <select
           value={modelId}
           onChange={(e) => onModelChange(e.target.value)}
@@ -70,11 +79,11 @@ export default function Header({
           {sortedModels.map((m) => (
             <option key={m.id} value={m.id}>
               {shortModel(m.id)} · {fmtPrice(m.price_usd, m.price_unit)}
-              {m.recommended ? "★" : ""}
+              {m.recommended ? " ★" : ""}
             </option>
           ))}
         </select>
-      </div>
+      </label>
     </header>
   );
 }

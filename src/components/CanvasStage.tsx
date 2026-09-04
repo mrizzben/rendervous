@@ -1,4 +1,5 @@
 import { ACCEPTED_TYPES } from "../api";
+import { DownloadIcon, GripIcon, PlusIcon } from "../icons";
 import useSplit from "./useSplit";
 
 interface CanvasStageProps {
@@ -35,7 +36,9 @@ export default function CanvasStage({
     >
       {projectId == null ? (
         <>
-          <div className="empty-mark">＋</div>
+          <div className="empty-mark">
+            <PlusIcon size={26} />
+          </div>
           <h2>Start with a project</h2>
           <p>
             Create a project, then import your architectural design.
@@ -48,7 +51,9 @@ export default function CanvasStage({
         </>
       ) : (
         <>
-          <div className="empty-mark">＋</div>
+          <div className="empty-mark">
+            <PlusIcon size={26} />
+          </div>
           <h2>Import your design</h2>
           <p>
             Drop a SketchUp viewport, clay render or exported view
@@ -129,7 +134,8 @@ export default function CanvasStage({
             title="Download this render"
             onClick={(e) => e.stopPropagation()}
           >
-            ⤓ Download
+            <DownloadIcon size={13} />
+            Download
           </a>
         )}
         {renderUrl && (
@@ -137,7 +143,9 @@ export default function CanvasStage({
         )}
       </div>
       {renderUrl && (
-        <div className="stage-hint">drag to compare design vs render</div>
+        <div className="stage-hint">
+          <GripIcon size={11} /> drag to compare design vs render
+        </div>
       )}
     </main>
   );

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { Design, ProjectSummary } from "../api";
 import { ACCEPTED_LIST, ACCEPTED_TYPES } from "../api";
+import { ArchiveIcon, PlusIcon, RestoreIcon, TrashIcon } from "../icons";
 
 interface LeftRailProps {
   projects: ProjectSummary[];
@@ -48,65 +49,69 @@ export default function LeftRail({
     onUpload(f);
   };
 
+  const activeProject = projects.find((p) => p.id === projectId) ?? null;
   const shownDesigns = showArchived
     ? designs
     : designs.filter((d) => !d.archived);
+  const hasArchived = designs.some((d) => d.archived);
 
   return (
     <aside className="rail">
       <div className="rail-head">
         <div className="rail-title">Project</div>
-        <div className="rail-actions">
-          <select
-            className="sel project-sel"
-            value={projectId ?? ""}
-            onChange={(e) => onProject(Number(e.target.value))}
-            disabled={busy}
-          >
-            {projects.length === 0 && <option value="">—</option>}
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.archived ? " · archived" : ""}
-              </option>
-            ))}
-          </select>
-          <input
-            className="inp new-proj"
-            placeholder="new project…"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newName.trim()) {
-                onNewProject(newName.trim());
-                setNewName("");
-              }
-            }}
-          />
-        </div>
-        {projectId != null && (
+        <select
+          className="sel project-sel"
+          value={projectId ?? ""}
+          onChange={(e) => onProject(Number(e.target.value))}
+          disabled={busy}
+        >
+          {projects.length === 0 && <option value="">—</option>}
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+              {p.archived ? " · archived" : ""}
+            </option>
+          ))}
+        </select>
+        <input
+          className="inp new-proj"
+          placeholder="new project…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && newName.trim()) {
+              onNewProject(newName.trim());
+              setNewName("");
+            }
+          }}
+        />
+        {activeProject && (
           <div className="rail-manage">
             <button
               className="rail-mini"
               disabled={busy}
               title={
-                projects.find((p) => p.id === projectId)?.archived
+                activeProject.archived
                   ? "Restore this project to the active list"
                   : "Archive this project (hidden, not deleted)"
               }
-              onClick={() => onArchiveProject(projectId)}
+              onClick={() => onArchiveProject(projectId!)}
             >
-              {projects.find((p) => p.id === projectId)?.archived
-                ? "↩ Restore"
-                : "🗄 Archive"}
+              {activeProject.archived ? (
+                <RestoreIcon size={13} />
+              ) : (
+                <ArchiveIcon size={13} />
+              )}
+              <span>{activeProject.archived ? "Restore" : "Archive"}</span>
             </button>
             <button
               className="rail-mini danger"
               disabled={busy}
               title="Delete this project, its designs and renders permanently"
-              onClick={() => onDeleteProject(projectId)}
+              onClick={() => onDeleteProject(projectId!)}
             >
-              🗑 Delete
+              <TrashIcon size={13} />
+              <span>Delete</span>
             </button>
           </div>
         )}
@@ -122,7 +127,8 @@ export default function LeftRail({
             : "Import a 3D viewport render / clay model image"
         }
       >
-        <span className="plus">＋</span> Import design
+        <PlusIcon size={15} />
+        <span>Import design</span>
       </button>
       {err && <div className="rail-err">{err}</div>}
 
@@ -131,7 +137,7 @@ export default function LeftRail({
           <div className="rail-empty">
             {projectId == null
               ? "Create a project, then import your design."
-              : designs.some((d) => d.archived)
+              : hasArchived
                 ? "No active views — show archived to restore, or import a new design."
                 : "No views yet — import your first design (SketchUp viewport, clay render…)."}
           </div>
@@ -164,48 +170,46 @@ export default function LeftRail({
               </small>
             </div>
             <div className="view-actions">
-              {d.archived ? (
-                <button
-                  className="rail-mini"
-                  disabled={busy}
-                  title="Restore this design"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onArchiveDesign(d.id, false);
-                  }}
-                >
-                  ↩
-                </button>
-              ) : (
-                <button
-                  className="rail-mini"
-                  disabled={busy}
-                  title="Archive this design (hidden, not deleted)"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onArchiveDesign(d.id, true);
-                  }}
-                >
-                  🗄
-                </button>
-              )}
               <button
-                className="rail-mini danger"
+                className="rail-mini icon-only"
                 disabled={busy}
+                aria-label={
+                  d.archived ? "Restore this design" : "Archive this design"
+                }
+                title={
+                  d.archived
+                    ? "Restore this design"
+                    : "Archive this design (hidden, not deleted)"
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchiveDesign(d.id, d.archived ? false : true);
+                }}
+              >
+                {d.archived ? (
+                  <RestoreIcon size={13} />
+                ) : (
+                  <ArchiveIcon size={13} />
+                )}
+              </button>
+              <button
+                className="rail-mini icon-only danger"
+                disabled={busy}
+                aria-label="Delete this design and its renders permanently"
                 title="Delete this design and its renders permanently"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteDesign(d.id);
                 }}
               >
-                🗑
+                <TrashIcon size={13} />
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {designs.some((d) => d.archived) && (
+      {hasArchived && (
         <label className="rail-archived-toggle">
           <input
             type="checkbox"

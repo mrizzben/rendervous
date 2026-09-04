@@ -1,5 +1,6 @@
 import type { Revision } from "../api";
 import { fmtDate, shortModel } from "../api";
+import { BranchIcon, CompareIcon, SparklesIcon, XIcon } from "../icons";
 
 interface FilmstripProps {
   revisions: Revision[];
@@ -44,7 +45,12 @@ export default function Filmstrip({
       </div>
       {revisions.length === 0 ? (
         <div className="film-empty">
-          No renders yet. Tune the Visualize panel and press Render.
+          <span className="film-empty-icon">
+            <SparklesIcon size={15} />
+          </span>
+          <span>
+            No renders yet. Tune the Visualize panel and press Render.
+          </span>
         </div>
       ) : (
         <div className="film-row">
@@ -65,28 +71,35 @@ export default function Filmstrip({
                 <button
                   className="fa"
                   disabled={busy}
+                  aria-label="Branch from this revision"
                   title="Branch: new render derived from this one"
                   onClick={() => onBranch(r.id)}
                 >
-                  ⟳
+                  <BranchIcon size={12} />
                 </button>
                 <button
                   className={`fa ${compare.includes(r.id) ? "sel" : ""}`}
                   disabled={
                     busy || (compare.length >= 2 && !compare.includes(r.id))
                   }
+                  aria-label={
+                    compare.includes(r.id)
+                      ? "Remove from comparison"
+                      : "Add to comparison"
+                  }
                   title="Toggle compare"
                   onClick={() => onCompare(r.id)}
                 >
-                  ⌁
+                  <CompareIcon size={12} />
                 </button>
                 <button
                   className="fa danger"
                   disabled={busy || deleting.has(r.id)}
+                  aria-label="Delete this revision"
                   title="Delete"
                   onClick={() => onDelete(r.id)}
                 >
-                  ✕
+                  <XIcon size={12} />
                 </button>
               </div>
               <div className="film-meta">
