@@ -387,7 +387,10 @@ export default function App() {
             busy={busy}
             onUpload={handleUpload}
             onCreateProject={() => {
-              const name = window.prompt("Name the new project", "Untitled Project");
+              const name = window.prompt(
+                "Name the new project",
+                "Untitled Project",
+              );
               if (name === null) return; // cancelled
               handleNewProject(name.trim() || "Untitled Project");
             }}
@@ -423,7 +426,8 @@ export default function App() {
               {compare[0].label} vs {compare[1].label}
             </span>
             <span className="dim">
-              current: {compare.find((c) => c.id === currentId)?.label ?? "none"}
+              current:{" "}
+              {compare.find((c) => c.id === currentId)?.label ?? "none"}
             </span>
           </div>
           <CompareView a={compare[0]} b={compare[1]} currentId={currentId} />

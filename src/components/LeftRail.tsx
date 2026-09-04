@@ -61,7 +61,11 @@ export default function LeftRail({
 
   const activeProject = projects.find((p) => p.id === projectId) ?? null;
   const commitRename = () => {
-    if (renaming && renameValue.trim() && renameValue.trim() !== activeProject?.name) {
+    if (
+      renaming &&
+      renameValue.trim() &&
+      renameValue.trim() !== activeProject?.name
+    ) {
       onRenameProject(projectId!, renameValue.trim());
     }
     setRenaming(false);
