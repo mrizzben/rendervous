@@ -373,7 +373,11 @@ export default function App() {
             }
             busy={busy}
             onUpload={handleUpload}
-            onCreateProject={() => handleNewProject("Untitled Project")}
+            onCreateProject={() => {
+              const name = window.prompt("Name the new project", "Untitled Project");
+              if (name === null) return; // cancelled
+              handleNewProject(name.trim() || "Untitled Project");
+            }}
           />
           <Filmstrip
             revisions={revisions}
@@ -406,12 +410,7 @@ export default function App() {
               {compare[0].label} vs {compare[1].label}
             </span>
             <span className="dim">
-              current:{" "}
-              {compare[0].id === currentId
-                ? compare[0].label
-                : compare[1].id === currentId
-                  ? compare[1].label
-                  : "none"}
+              current: {compare.find((c) => c.id === currentId)?.label ?? "none"}
             </span>
           </div>
           <CompareView a={compare[0]} b={compare[1]} currentId={currentId} />

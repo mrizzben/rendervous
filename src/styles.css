@@ -309,6 +309,36 @@ textarea:focus {
   cursor: default;
 }
 
+.new-proj-row {
+  display: flex;
+  gap: 6px;
+}
+.new-proj-row .inp {
+  flex: 1;
+  min-width: 0;
+}
+.new-proj-add {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  background: #16221f;
+  border: 1px solid #2a4a40;
+  border-radius: 6px;
+  color: #63e6be;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.new-proj-add:hover:not(:disabled) {
+  background: #1c2b26;
+}
+.new-proj-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .btn-import {
   display: flex;
   align-items: center;

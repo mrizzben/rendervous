@@ -73,18 +73,34 @@ export default function LeftRail({
             </option>
           ))}
         </select>
-        <input
-          className="inp new-proj"
-          placeholder="new project…"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && newName.trim()) {
+        <div className="new-proj-row">
+          <input
+            className="inp new-proj"
+            placeholder="new project…"
+            value={newName}
+            disabled={busy}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newName.trim()) {
+                onNewProject(newName.trim());
+                setNewName("");
+              }
+            }}
+          />
+          <button
+            className="btn new-proj-add"
+            disabled={busy || !newName.trim()}
+            title="Create project"
+            aria-label="Create project"
+            onClick={() => {
+              if (!newName.trim()) return;
               onNewProject(newName.trim());
               setNewName("");
-            }
-          }}
-        />
+            }}
+          >
+            <PlusIcon size={14} />
+          </button>
+        </div>
         {activeProject && (
           <div className="rail-manage">
             <button

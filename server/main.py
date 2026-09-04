@@ -108,7 +108,7 @@ def _resize(data: bytes, width, height) -> bytes:
     if img.format == "PNG" and (img.width, img.height) == (w, h):
         return data
     img = img.convert("RGB")
-    img = img.resize((w, h), Image.LANCZOS)
+    img = img.resize((w, h), Image.Resampling.LANCZOS)
     out = io.BytesIO()
     img.save(out, format="PNG")
     return out.getvalue()
@@ -233,11 +233,9 @@ class ProjectCreate(BaseModel):
 @app.post("/api/projects")
 def create_project(req: ProjectCreate):
     pid = db.create_project(req.name.strip() or "Untitled Project")
-    return {
-        "id": pid,
-        "name": req.name,
-        "created_at": db.get_project(pid)["created_at"],
-    }
+    row = db.get_project_summary(pid)
+    assert row is not None  # created in the line above
+    return dict(row)
 
 
 @app.get("/api/projects")

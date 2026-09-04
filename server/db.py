@@ -126,6 +126,23 @@ def get_project(project_id: int):
         return row
 
 
+def get_project_summary(project_id: int):
+    """Same projection as list_projects, for one project (API response shape)."""
+    with _lock:
+        return (
+            conn()
+            .execute(
+                "SELECT p.id, p.name, p.created_at, p.archived,"
+                " (SELECT COUNT(*) FROM designs d WHERE d.project_id=p.id) AS design_count,"
+                " (SELECT COUNT(*) FROM visualizations v"
+                "   JOIN designs d2 ON d2.id=v.design_id WHERE d2.project_id=p.id) AS visualization_count"
+                " FROM projects p WHERE p.id=?",
+                (project_id,),
+            )
+            .fetchone()
+        )
+
+
 def list_projects(include_archived: bool = False):
     with _lock:
         # include_archived is bound as a param, never interpolated into SQL
