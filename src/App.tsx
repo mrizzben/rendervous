@@ -10,6 +10,8 @@ import type {
 import {
   createProject,
   createVisualization,
+  deleteDesign,
+  deleteProject,
   deleteRevision,
   generate,
   getHealth,
@@ -21,6 +23,8 @@ import {
   measureImage,
   pollUntil,
   restoreRevision,
+  setDesignArchived,
+  setProjectArchived,
   shortModel,
   uploadDesign,
 } from "./api";
@@ -81,7 +85,7 @@ export default function App() {
     getModels()
       .then(setModels)
       .catch((e) => fail(e));
-    listProjects()
+    listProjects(true)
       .then(setProjects)
       .catch((e) => fail(e));
   }, []);
@@ -232,6 +236,74 @@ export default function App() {
     }
   };
 
+  // ---- project & design archive/delete -----------------------------------
+
+  const handleArchiveProject = async (id: number) => {
+    const p = projects.find((x) => x.id === id);
+    const archiving = !p?.archived;
+    if (
+      archiving &&
+      !window.confirm(`Archive "${p?.name}"? Hide it from the project list until restored.`)
+    )
+      return;
+    try {
+      await setProjectArchived(id, archiving);
+      setProjects(await listProjects(true));
+      if (projectId === id && archiving) {
+        setProjectId(null);
+        setDesigns([]);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const handleDeleteProject = async (id: number) => {
+    const p = projects.find((x) => x.id === id);
+    if (!p) return;
+    if (
+      !window.confirm(
+        `Delete "${p.name}" and ALL its designs and renders? This cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      await deleteProject(id);
+      setProjects((prev) => prev.filter((x) => x.id !== id));
+      if (projectId === id) {
+        setProjectId(null);
+        setDesigns([]);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const handleArchiveDesign = async (id: number, archived: boolean) => {
+    try {
+      await setDesignArchived(id, archived);
+      await reload();
+    } catch (e) {
+      fail(e);
+    }
+  };
+
+  const handleDeleteDesign = async (id: number) => {
+    const d = designs.find((x) => x.id === id);
+    if (
+      !window.confirm(
+        `Delete design "${d?.name}" and all its renders? This cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      await deleteDesign(id);
+      await reload();
+    } catch (e) {
+      fail(e);
+    }
+  };
+
   const toggleCompare = (id: number) => {
     setCompareIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -279,6 +351,10 @@ export default function App() {
           onDesign={setDesignId}
           onNewProject={handleNewProject}
           onUpload={handleUpload}
+          onArchiveProject={handleArchiveProject}
+          onDeleteProject={handleDeleteProject}
+          onArchiveDesign={handleArchiveDesign}
+          onDeleteDesign={handleDeleteDesign}
         />
 
         <div className="stage-col">

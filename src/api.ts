@@ -43,6 +43,7 @@ export interface ProjectSummary {
   created_at: string;
   design_count: number;
   visualization_count: number;
+  archived: boolean;
 }
 
 export interface Revision {
@@ -69,6 +70,7 @@ export interface Design {
   name: string;
   image_url: string | null;
   created_at: string;
+  archived?: boolean;
   visualizations: Visualization[];
 }
 
@@ -200,12 +202,36 @@ export function createProject(name: string): Promise<ProjectSummary> {
   });
 }
 
-export function listProjects(): Promise<ProjectSummary[]> {
-  return jfetch<ProjectSummary[]>("/api/projects");
+export function listProjects(includeArchived = false): Promise<ProjectSummary[]> {
+  return jfetch<ProjectSummary[]>(
+    `/api/projects${includeArchived ? "?include_archived=true" : ""}`,
+  );
 }
 
 export function getProject(id: number): Promise<ProjectDetail> {
   return jfetch<ProjectDetail>(`/api/projects/${id}`);
+}
+
+export function setProjectArchived(id: number, archived: boolean): Promise<unknown> {
+  return jfetch<unknown>(`/api/projects/${id}/archive`, {
+    method: "POST",
+    body: JSON.stringify({ archived }),
+  });
+}
+
+export function deleteProject(id: number): Promise<unknown> {
+  return jfetch<unknown>(`/api/projects/${id}`, { method: "DELETE" });
+}
+
+export function setDesignArchived(id: number, archived: boolean): Promise<unknown> {
+  return jfetch<unknown>(`/api/designs/${id}/archive`, {
+    method: "POST",
+    body: JSON.stringify({ archived }),
+  });
+}
+
+export function deleteDesign(id: number): Promise<unknown> {
+  return jfetch<unknown>(`/api/designs/${id}`, { method: "DELETE" });
 }
 
 export function uploadDesign(

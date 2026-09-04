@@ -241,9 +241,32 @@ def create_project(req: ProjectCreate):
 
 
 @app.get("/api/projects")
-def list_projects():
-    rows = db.list_projects()
+def list_projects(include_archived: bool = False):
+    rows = db.list_projects(include_archived=include_archived)
     return [dict(r) for r in rows]
+
+
+class ArchiveRequest(BaseModel):
+    archived: bool = True
+
+
+@app.post("/api/projects/{project_id}/archive")
+def archive_project(project_id: int, req: ArchiveRequest):
+    if not db.set_project_archived(project_id, req.archived):
+        raise HTTPException(status_code=404, detail="project not found")
+    return {"ok": True, "id": project_id, "archived": req.archived}
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int):
+    if not db.get_project(project_id):
+        raise HTTPException(status_code=404, detail="project not found")
+    image_rows = db.delete_project(project_id)
+    for r in image_rows:
+        Path(os.path.join(db.IMAGES_DIR, os.path.basename(r["image_path"]))).unlink(
+            missing_ok=True
+        )
+    return {"ok": True}
 
 
 @app.get("/api/projects/{project_id}")
@@ -284,6 +307,7 @@ def project_tree(project_id: int):
                 "name": d["name"],
                 "image_url": _image_url(d["image_path"]),
                 "created_at": d["created_at"],
+                "archived": bool(d["archived"]),
                 "visualizations": vizes,
             }
         )
@@ -308,6 +332,32 @@ async def upload_design(
     path = _save_bytes(data, ext)
     did = db.create_design(project_id, name.strip() or "Reference", path)
     return {"id": did, "name": name, "image_url": _image_url(path)}
+
+
+@app.post("/api/designs/{design_id}/archive")
+def archive_design(design_id: int, req: ArchiveRequest):
+    if not db.set_design_archived(design_id, req.archived):
+        raise HTTPException(status_code=404, detail="design not found")
+    return {"ok": True, "id": design_id, "archived": req.archived}
+
+
+@app.delete("/api/designs/{design_id}")
+def delete_design(design_id: int):
+    design = db.get_design(design_id)
+    if not design:
+        raise HTTPException(status_code=404, detail="design not found")
+    # Collect every image file owned by this design (its reference + all
+    # revision renders) BEFORE the cascade delete, then unlink after commit.
+    paths = {design["image_path"]}
+    for v in db.list_visualizations(design_id):
+        for r in db.list_revisions(v["id"]):
+            paths.add(r["image_path"])
+    db.delete_design(design_id)
+    for p in paths:
+        Path(os.path.join(db.IMAGES_DIR, os.path.basename(p))).unlink(
+            missing_ok=True
+        )
+    return {"ok": True}
 
 
 class VizCreate(BaseModel):

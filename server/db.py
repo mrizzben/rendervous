@@ -28,6 +28,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
+  archived INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS designs (
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS designs (
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   image_path TEXT NOT NULL,
+  archived INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS visualizations (
@@ -72,6 +74,17 @@ CREATE TABLE IF NOT EXISTS jobs (
 """
 
 
+def _migrate() -> None:
+    """Add columns introduced after the first schema (existing data/ DBs)."""
+    for table in ("projects", "designs"):
+        cols = {r["name"] for r in conn().execute(f"PRAGMA table_info({table})")}
+        if "archived" not in cols:
+            conn().execute(
+                f"ALTER TABLE {table} ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+            )
+    conn().commit()
+
+
 def conn() -> sqlite3.Connection:
     global _conn
     if _conn is None:
@@ -87,6 +100,7 @@ def conn() -> sqlite3.Connection:
                 _conn.row_factory = sqlite3.Row
                 _conn.execute("PRAGMA foreign_keys = ON")
                 _conn.executescript(SCHEMA)
+                _migrate()
                 _conn.commit()
     return _conn
 
@@ -112,19 +126,47 @@ def get_project(project_id: int):
         return row
 
 
-def list_projects():
+def list_projects(include_archived: bool = False):
     with _lock:
+        # include_archived is bound as a param, never interpolated into SQL
         return (
             conn()
             .execute(
-                "SELECT p.id, p.name, p.created_at,"
+                "SELECT p.id, p.name, p.created_at, p.archived,"
                 " (SELECT COUNT(*) FROM designs d WHERE d.project_id=p.id) AS design_count,"
                 " (SELECT COUNT(*) FROM visualizations v"
                 "   JOIN designs d2 ON d2.id=v.design_id WHERE d2.project_id=p.id) AS visualization_count"
-                " FROM projects p ORDER BY p.created_at DESC"
+                " FROM projects p"
+                " WHERE p.archived = 0 OR ? = 1"
+                " ORDER BY p.archived ASC, p.created_at DESC",
+                (1 if include_archived else 0,),
             )
             .fetchall()
         )
+
+
+def set_project_archived(project_id: int, archived: bool) -> bool:
+    """Archive/unarchive a project. Returns False if the id doesn't exist."""
+    with _lock:
+        cur = conn().execute(
+            "UPDATE projects SET archived=? WHERE id=?",
+            (1 if archived else 0, project_id),
+        )
+        conn().commit()
+        return cur.rowcount > 0
+
+
+def delete_project(project_id: int):
+    """Delete a project (cascades to designs/vizes/revisions). Returns the
+    deleted row, or None if missing. Design image files are NOT removed here
+    — main.py collects them first and unlinks them after the commit."""
+    with _lock:
+        row = conn().execute(
+            "SELECT image_path FROM designs WHERE project_id=?", (project_id,)
+        ).fetchall()
+        conn().execute("DELETE FROM projects WHERE id=?", (project_id,))
+        conn().commit()
+        return row
 
 
 # ----------------------------------------------------------------- designs
@@ -154,11 +196,37 @@ def list_designs(project_id: int):
         return (
             conn()
             .execute(
-                "SELECT * FROM designs WHERE project_id=? ORDER BY created_at",
+                "SELECT * FROM designs WHERE project_id=? ORDER BY archived ASC, created_at",
                 (project_id,),
             )
             .fetchall()
         )
+
+
+def set_design_archived(design_id: int, archived: bool) -> bool:
+    """Archive/unarchive a design. Returns False if the id doesn't exist."""
+    with _lock:
+        cur = conn().execute(
+            "UPDATE designs SET archived=? WHERE id=?",
+            (1 if archived else 0, design_id),
+        )
+        conn().commit()
+        return cur.rowcount > 0
+
+
+def delete_design(design_id: int):
+    """Delete a design (cascades to vizes/revisions). Returns the deleted row
+    (so the caller can unlink its image file), or None if missing."""
+    with _lock:
+        row = (
+            conn()
+            .execute("SELECT * FROM designs WHERE id=?", (design_id,))
+            .fetchone()
+        )
+        if row:
+            conn().execute("DELETE FROM designs WHERE id=?", (design_id,))
+            conn().commit()
+        return row
 
 
 # ------------------------------------------------------------ visualizations
