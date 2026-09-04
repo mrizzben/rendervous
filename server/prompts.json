@@ -13,10 +13,10 @@
     },
     "lighting_base": "Create physically plausible natural lighting, realistic indirect illumination, contact shadows, reflections and ambient occlusion.",
     "lighting_presets": {
-      "daylight": "Clear late-morning daylight: bright natural sun, crisp soft shadows, blue sky with light clouds.",
+      "daylight": "Clear late-morning daylight: bright natural sun roughly 45–60° above the horizon, crisp short shadows, blue sky with light clouds.",
       "overcast": "Overcast sky: soft diffused daylight, gentle even shadows, muted neutral atmosphere.",
-      "golden_hour": "Golden hour: warm low-angle sunlight, long soft shadows, warm amber highlights and haze.",
-      "sunset": "Sunset: dramatic warm twilight, deep orange to pink sky, long shadows falling into dusk.",
+      "golden_hour": "Golden hour: warm low-angle sunlight with the sun roughly 6–10° above the horizon, long soft shadows, warm amber highlights and haze.",
+      "sunset": "Sunset: dramatic warm twilight with the sun barely above the horizon (roughly 0–5°), deep orange to pink sky, long shadows falling into dusk.",
       "night": "Night scene: deep blue twilight, moonlight, warm interior light spilling from the windows."
     },
     "environment_base": "Add realistic landscaping, vegetation, sky and environmental details only where they do not obscure or modify the building geometry.",

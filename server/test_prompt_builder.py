@@ -25,3 +25,50 @@ def test_lamp_temp_kept_for_night_and_sunset():
 def test_no_lamp_temp_still_fine():
     p = build_prompt({**_BASE, "lighting": "night"})
     assert "approximately" not in p
+
+
+def test_lighting_presets_bake_sun_elevation():
+    assert "45–60°" in build_prompt({**_BASE, "lighting": "daylight"})
+    assert "6–10°" in build_prompt({**_BASE, "lighting": "golden_hour"})
+    assert "0–5°" in build_prompt({**_BASE, "lighting": "sunset"})
+
+
+def test_sun_direction_raking_light():
+    p = build_prompt({**_BASE, "lighting": "daylight", "sun_direction": "left"})
+    assert "raking across the facade" in p
+
+
+def test_sun_elevation_overrides_preset_height():
+    p = build_prompt(
+        {**_BASE, "lighting": "golden_hour", "sun_elevation": 30}
+    )
+    assert "exactly 30° above the horizon" in p
+
+
+def test_sun_elevation_ignored_without_direct_sun():
+    for lighting in ("overcast", "night"):
+        p = build_prompt({**_BASE, "lighting": lighting, "sun_elevation": 30})
+        assert "exactly 30°" not in p, lighting
+
+
+def test_focal_length_and_f_stop():
+    p = build_prompt(
+        {**_BASE, "lighting": "daylight", "focal_length": 35, "f_stop": 8}
+    )
+    assert "35mm lens at f/8, sharp focus across the frame" in p
+
+
+def test_focal_length_alone():
+    p = build_prompt({**_BASE, "lighting": "daylight", "focal_length": 24})
+    assert "Shot on a 24mm lens." in p
+
+
+def test_wide_aperture_gets_dof_note():
+    p = build_prompt({**_BASE, "lighting": "daylight", "f_stop": 2.8})
+    assert "background gently blurred" in p
+
+
+def test_no_advanced_settings_unchanged():
+    p = build_prompt({**_BASE, "lighting": "daylight"})
+    assert "Shot on a" not in p
+    assert "raking" not in p

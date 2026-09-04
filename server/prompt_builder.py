@@ -51,6 +51,77 @@ def _section(presets_name, base_name, key):
     return base + ("\n" + extra if extra else "")
 
 
+# Advanced settings (Advanced Configs panel) — each maps to a sentence appended
+# to the corresponding prompt section. Unset/None means "auto": the lighting or
+# photography preset wording stands alone.
+
+_SUN_DIRECTIONS = {
+    "front": (
+        "The sun is positioned in front of the building relative to the "
+        "camera, evenly front-lighting the facade with soft, short shadows."
+    ),
+    "left": (
+        "The sun comes from the left of the camera, raking across the "
+        "facade and casting shadows toward the right."
+    ),
+    "right": (
+        "The sun comes from the right of the camera, raking across the "
+        "facade and casting shadows toward the left."
+    ),
+    "behind": (
+        "The sun is behind the building, backlighting it: the facade sits "
+        "in soft shade against a bright sky, with rim light on roof edges."
+    ),
+}
+
+# Lighting presets that have a direct sun to aim. Overcast/night have no
+# visible sun disc, so direction and elevation do not apply there.
+_SUN_LIGHTINGS = ("daylight", "golden_hour", "sunset")
+
+_F_STOP_NOTES = {
+    2.8: "shallow depth of field with the background gently blurred",
+    4: "shallow depth of field with the background gently blurred",
+    5.6: "moderate depth of field",
+    8: "sharp focus across the frame",
+    11: "sharp focus across the frame",
+    16: "deep focus with everything sharp front to back",
+}
+
+
+def _advanced_lighting(s):
+    """Sun direction + elevation sentences for the LIGHTING section."""
+    lines = []
+    direction = _SUN_DIRECTIONS.get(s.get("sun_direction"))
+    if direction:
+        lines.append(direction)
+    elevation = s.get("sun_elevation")
+    if (
+        s["lighting"] in _SUN_LIGHTINGS
+        and isinstance(elevation, (int, float))
+        and 0 <= elevation <= 90
+    ):
+        lines.append(
+            f"Override the default sun height: place the sun exactly "
+            f"{elevation:.0f}° above the horizon."
+        )
+    return "\n" + "\n".join(lines) if lines else ""
+
+
+def _advanced_photography(s):
+    """Lens sentence for the PHOTOGRAPHY section."""
+    focal = s.get("focal_length")
+    f_stop = s.get("f_stop")
+    if not isinstance(focal, (int, float)) and not isinstance(f_stop, (int, float)):
+        return ""
+    parts = []
+    if isinstance(focal, (int, float)) and 8 <= focal <= 200:
+        parts.append(f"{focal:.0f}mm lens")
+    if isinstance(f_stop, (int, float)) and 1 <= f_stop <= 32:
+        note = _F_STOP_NOTES.get(f_stop, "sharp focus across the frame")
+        parts.append(f"f/{f_stop:g}, {note}")
+    return f"\nShot on a {' at '.join(parts) if len(parts) == 2 else parts[0]}."
+
+
 def build_prompt(settings):
     """settings: {fidelity, lighting, material, environment, custom_instruction,
     negative_prompt} -> assembled prompt string."""
@@ -59,6 +130,7 @@ def build_prompt(settings):
     s.update(settings or {})
 
     lighting = _section("lighting_presets", "lighting_base", s["lighting"])
+    lighting += _advanced_lighting(s)
     # Lamp temperature only applies when artificial light sources dominate
     # the scene (night, sunset) — ignored for every other lighting preset.
     kelvin = s.get("lamp_temp")
@@ -93,7 +165,8 @@ def build_prompt(settings):
         environment=_section(
             "environment_presets", "environment_base", s["environment"]
         ),
-        style=_section("style_presets", "photography", s["style"]),
+        style=_section("style_presets", "photography", s["style"])
+        + _advanced_photography(s),
         restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
         extra="\n\n".join(extras),
     )
