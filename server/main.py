@@ -238,6 +238,20 @@ def create_project(req: ProjectCreate):
     return dict(row)
 
 
+class ProjectRename(BaseModel):
+    name: str
+
+
+@app.patch("/api/projects/{project_id}")
+def rename_project(project_id: int, req: ProjectRename):
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name cannot be empty")
+    if not db.update_project(project_id, name):
+        raise HTTPException(status_code=404, detail="project not found")
+    return {"ok": True, "id": project_id, "name": name}
+
+
 @app.get("/api/projects")
 def list_projects(include_archived: bool = False):
     rows = db.list_projects(include_archived=include_archived)

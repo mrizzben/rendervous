@@ -116,6 +116,15 @@ def create_project(name: str) -> int:
         return cur.lastrowid
 
 
+def update_project(project_id: int, name: str) -> bool:
+    with _lock:
+        cur = conn().execute(
+            "UPDATE projects SET name=? WHERE id=?", (name, project_id)
+        )
+        conn().commit()
+        return cur.rowcount > 0
+
+
 def get_project(project_id: int):
     with _lock:
         row = (
