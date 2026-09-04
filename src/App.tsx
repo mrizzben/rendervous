@@ -201,7 +201,7 @@ export default function App() {
   };
 
   const handleSetCurrent = async (id: number) => {
-    if (busy || id === currentId) return;
+    if (id === currentId) return;
     try {
       await restoreRevision(id);
       await reload();
