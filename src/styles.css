@@ -694,7 +694,7 @@ textarea:focus {
   flex: none;
   background: #13161b;
   border-left: 1px solid #232830;
-  padding: 16px;
+  padding: 16px 16px 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -845,6 +845,32 @@ input[type="range"]:disabled {
 .adv .ctl:first-of-type {
   margin-top: 10px;
 }
+.adv-body .ctl + .ctl {
+  margin-top: 16px;
+}
+.adv-val {
+  margin-left: auto;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  color: #63e6be;
+  text-transform: none;
+}
+
+/* sticky render footer: prompt + Render stay visible without scrolling */
+.render-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -16px;
+  padding: 12px 16px 14px;
+  background: #13161b;
+  border-top: 1px solid #232830;
+  box-shadow: 0 -8px 12px #13161b;
+}
+.render-footer .ctl {
+  margin-bottom: 12px;
+}
 
 .detail-inp {
   min-height: 62px;
@@ -874,7 +900,6 @@ input[type="range"]:disabled {
 }
 .btn-render {
   width: 100%;
-  margin-top: 2px;
   padding: 13px 14px;
   font-size: 14px;
   font-weight: 700;
@@ -920,6 +945,8 @@ input[type="range"]:disabled {
 }
 .ctl-note {
   line-height: 1.55;
+  margin-top: 8px;
+  font-size: 11px;
 }
 
 /* ---- filmstrip ---- */

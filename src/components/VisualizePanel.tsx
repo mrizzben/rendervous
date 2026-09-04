@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Settings } from "../api";
 import {
   DEFAULT_SETTINGS,
@@ -63,6 +64,120 @@ function ChipGroup<T extends string>({
   );
 }
 
+function AutoChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly { id: T; label: string }[];
+  value: T | undefined;
+  onChange: (v: T | undefined) => void;
+}) {
+  return (
+    <div className="ctl">
+      <div className="ctl-label">
+        {label}
+        <span className="fid-val">{value ?? "auto"}</span>
+      </div>
+      <div className="chips">
+        <button
+          type="button"
+          className={`chip ${value ? "" : "active"}`}
+          onClick={() => onChange(undefined)}
+        >
+          Auto
+        </button>
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            className={`chip ${value === o.id ? "active" : ""}`}
+            onClick={() => onChange(o.id)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RangeControl({
+  label,
+  value,
+  display,
+  min,
+  max,
+  step,
+  disabled,
+  scale,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  display: string;
+  min: number;
+  max: number;
+  step?: number;
+  disabled?: boolean;
+  scale: [string, string];
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="ctl">
+      <div className="ctl-label">
+        {label}
+        <span className="fid-val">{display}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        disabled={disabled}
+      />
+      <div className="fid-scale">
+        <span>{scale[0]}</span>
+        <span>{scale[1]}</span>
+      </div>
+    </div>
+  );
+}
+
+// Collapsible group with a summary of the values customized inside it, so
+// users can see at a glance whether a collapsed section holds a non-default
+// setting. Empty `summary` means everything inside is at its default.
+function ConfigGroup({
+  title,
+  summary,
+  children,
+  open,
+}: {
+  title: string;
+  summary?: string;
+  children: ReactNode;
+  open?: boolean;
+}) {
+  return (
+    <details className="adv" open={open}>
+      <summary>
+        {title}
+        {summary && <span className="adv-val">{summary}</span>}
+      </summary>
+      <div className="adv-body">{children}</div>
+    </details>
+  );
+}
+
+const labelOf = <T extends string>(
+  options: readonly { id: T; label: string }[],
+  id: T | undefined,
+) => options.find((o) => o.id === id)?.label;
+
 export default function VisualizePanel({
   settings,
   onChange,
@@ -77,6 +192,26 @@ export default function VisualizePanel({
   );
   const set = (patch: Partial<Settings>) => onChange({ ...settings, ...patch });
 
+  const sceneSummary = [
+    settings.material === DEFAULT_SETTINGS.material
+      ? null
+      : labelOf(MATERIALS, settings.material),
+    settings.finish ? labelOf(FINISHES, settings.finish) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const envSummary = [
+    settings.sky ? labelOf(SKIES, settings.sky) : null,
+    settings.environment === DEFAULT_SETTINGS.environment
+      ? null
+      : labelOf(ENVIRONMENTS, settings.environment),
+    settings.season ? labelOf(SEASONS, settings.season) : null,
+    settings.weather ? labelOf(WEATHERS, settings.weather) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <aside className="controls">
       <div className="ctl-head">
@@ -84,6 +219,7 @@ export default function VisualizePanel({
         <span className="dim">model · {engineName}</span>
       </div>
 
+      {/* Key configs — always visible */}
       <ChipGroup
         label="Style"
         options={STYLES}
@@ -97,383 +233,148 @@ export default function VisualizePanel({
         onChange={(v) => onChange({ ...settings, lighting: v })}
       />
 
-      <div className="ctl">
-        <div className="ctl-label">
-          Sky
-          <span className="fid-val">{settings.sky ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.sky ? "" : "active"}`}
-            onClick={() => set({ sky: undefined })}
-          >
-            Auto
-          </button>
-          {SKIES.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.sky === o.id ? "active" : ""}`}
-              onClick={() => set({ sky: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ChipGroup
-        label="Materials"
-        options={MATERIALS}
-        value={settings.material}
-        onChange={(v) => onChange({ ...settings, material: v })}
+      <RangeControl
+        label="Lamp temperature"
+        display={`${settings.lamp_temp ?? 3000}K`}
+        min={LAMP_TEMP_MIN}
+        max={LAMP_TEMP_MAX}
+        step={100}
+        value={settings.lamp_temp ?? 3000}
+        disabled={
+          settings.lighting !== "night" && settings.lighting !== "sunset"
+        }
+        scale={["WARM WHITE ~2700K", "DAYLIGHT ~6000K"]}
+        onChange={(v) => set({ lamp_temp: v })}
       />
 
-      <div className="ctl">
-        <div className="ctl-label">
-          Finish
-          <span className="fid-val">{settings.finish ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.finish ? "" : "active"}`}
-            onClick={() => set({ finish: undefined })}
-          >
-            Auto
-          </button>
-          {FINISHES.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.finish === o.id ? "active" : ""}`}
-              onClick={() => set({ finish: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ChipGroup
-        label="Environment"
-        options={ENVIRONMENTS}
-        value={settings.environment}
-        onChange={(v) => onChange({ ...settings, environment: v })}
+      <RangeControl
+        label="Geometry fidelity"
+        display={
+          settings.fidelity >= 80
+            ? "strict"
+            : settings.fidelity >= 41
+              ? "balanced"
+              : "creative"
+        }
+        min={0}
+        max={100}
+        value={settings.fidelity}
+        scale={["CREATIVE", "STRICT"]}
+        onChange={(v) => set({ fidelity: v })}
       />
 
-      <div className="ctl">
-        <div className="ctl-label">
-          Season
-          <span className="fid-val">{settings.season ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.season ? "" : "active"}`}
-            onClick={() => set({ season: undefined })}
-          >
-            Auto
-          </button>
-          {SEASONS.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.season === o.id ? "active" : ""}`}
-              onClick={() => set({ season: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ConfigGroup title="Scene & materials" summary={sceneSummary}>
+        <AutoChipGroup
+          label="Materials"
+          options={MATERIALS}
+          value={settings.material}
+          onChange={(v) => set({ material: v })}
+        />
+        <AutoChipGroup
+          label="Finish"
+          options={FINISHES}
+          value={settings.finish}
+          onChange={(v) => set({ finish: v })}
+        />
+      </ConfigGroup>
 
-      <div className="ctl">
-        <div className="ctl-label">
-          Weather
-          <span className="fid-val">{settings.weather ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.weather ? "" : "active"}`}
-            onClick={() => set({ weather: undefined })}
-          >
-            Auto
-          </button>
-          {WEATHERS.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.weather === o.id ? "active" : ""}`}
-              onClick={() => set({ weather: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ConfigGroup title="Environment & atmosphere" summary={envSummary}>
+        <AutoChipGroup
+          label="Sky"
+          options={SKIES}
+          value={settings.sky}
+          onChange={(v) => set({ sky: v })}
+        />
+        <AutoChipGroup
+          label="Environment"
+          options={ENVIRONMENTS}
+          value={settings.environment}
+          onChange={(v) => set({ environment: v })}
+        />
+        <AutoChipGroup
+          label="Season"
+          options={SEASONS}
+          value={settings.season}
+          onChange={(v) => set({ season: v })}
+        />
+        <AutoChipGroup
+          label="Weather"
+          options={WEATHERS}
+          value={settings.weather}
+          onChange={(v) => set({ weather: v })}
+        />
+      </ConfigGroup>
 
-      <div className="ctl">
-        <div className="ctl-label">
-          Season
-          <span className="fid-val">{settings.season ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.season ? "" : "active"}`}
-            onClick={() => set({ season: undefined })}
-          >
-            Auto
-          </button>
-          {SEASONS.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.season === o.id ? "active" : ""}`}
-              onClick={() => set({ season: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="ctl">
-        <div className="ctl-label">
-          Weather
-          <span className="fid-val">{settings.weather ?? "auto"}</span>
-        </div>
-        <div className="chips">
-          <button
-            type="button"
-            className={`chip ${settings.weather ? "" : "active"}`}
-            onClick={() => set({ weather: undefined })}
-          >
-            Auto
-          </button>
-          {WEATHERS.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`chip ${settings.weather === o.id ? "active" : ""}`}
-              onClick={() => set({ weather: o.id })}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="ctl">
-        <div className="ctl-label">
-          Geometry fidelity
-          <span className="fid-val">
-            {settings.fidelity >= 80
-              ? "strict"
-              : settings.fidelity >= 41
-                ? "balanced"
-                : "creative"}
-          </span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={settings.fidelity}
-          onChange={(e) =>
-            onChange({ ...settings, fidelity: Number(e.target.value) })
+      <ConfigGroup title="Camera & grade">
+        <AutoChipGroup
+          label="Sun direction"
+          options={SUN_DIRECTIONS}
+          value={settings.sun_direction}
+          onChange={(v) => set({ sun_direction: v })}
+        />
+        <RangeControl
+          label="Sun elevation"
+          display={
+            settings.sun_elevation == null
+              ? "auto"
+              : `${settings.sun_elevation}°`
+          }
+          min={SUN_ELEVATION_MIN}
+          max={SUN_ELEVATION_MAX}
+          step={1}
+          value={settings.sun_elevation ?? 45}
+          disabled={!hasSun}
+          scale={["HORIZON 0°", "NOON 90°"]}
+          onChange={(v) => set({ sun_elevation: v })}
+        />
+        <AutoChipGroup
+          label="Focal length"
+          options={FOCAL_LENGTHS.map((mm) => ({
+            id: String(mm),
+            label: `${mm}mm`,
+          }))}
+          value={
+            settings.focal_length == null
+              ? undefined
+              : String(settings.focal_length)
+          }
+          onChange={(v) =>
+            set({ focal_length: v == null ? undefined : Number(v) })
           }
         />
-        <div className="fid-scale">
-          <span>CREATIVE</span>
-          <span>STRICT</span>
-        </div>
-      </div>
-
-      <div className="ctl">
-        <div className="ctl-label">
-          Lamp temperature
-          <span className="fid-val">{settings.lamp_temp ?? 3000}K</span>
-        </div>
-        <input
-          type="range"
-          min={LAMP_TEMP_MIN}
-          max={LAMP_TEMP_MAX}
-          step={100}
-          value={settings.lamp_temp ?? 3000}
-          onChange={(e) =>
-            onChange({ ...settings, lamp_temp: Number(e.target.value) })
+        <RangeControl
+          label="Grade intensity"
+          display={
+            settings.grade_intensity == null
+              ? "auto"
+              : String(settings.grade_intensity)
           }
-          disabled={
-            settings.lighting !== "night" && settings.lighting !== "sunset"
-          }
+          min={GRADE_INTENSITY_MIN}
+          max={GRADE_INTENSITY_MAX}
+          step={1}
+          value={settings.grade_intensity ?? 50}
+          scale={["SUBTLE", "CINEMATIC"]}
+          onChange={(v) => set({ grade_intensity: v })}
         />
-        <div className="fid-scale">
-          <span>WARM WHITE ~2700K</span>
-          <span>DAYLIGHT ~6000K</span>
-        </div>
-      </div>
-
-      <details className="adv">
-        <summary>Advanced configs</summary>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Sun direction
-            <span className="fid-val">{settings.sun_direction ?? "auto"}</span>
-          </div>
-          <div className="chips">
-            <button
-              type="button"
-              className={`chip ${settings.sun_direction ? "" : "active"}`}
-              onClick={() => set({ sun_direction: undefined })}
-            >
-              Auto
-            </button>
-            {SUN_DIRECTIONS.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                className={`chip ${settings.sun_direction === o.id ? "active" : ""}`}
-                onClick={() => set({ sun_direction: o.id })}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Sun elevation
-            <span className="fid-val">
-              {settings.sun_elevation == null
-                ? "auto"
-                : `${settings.sun_elevation}°`}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={SUN_ELEVATION_MIN}
-            max={SUN_ELEVATION_MAX}
-            step={1}
-            value={settings.sun_elevation ?? 45}
-            onChange={(e) => set({ sun_elevation: Number(e.target.value) })}
-            disabled={!hasSun}
-          />
-          <div className="fid-scale">
-            <span>HORIZON 0°</span>
-            <span>NOON 90°</span>
-          </div>
-        </div>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Focal length
-            <span className="fid-val">
-              {settings.focal_length == null
-                ? "auto"
-                : `${settings.focal_length}mm`}
-            </span>
-          </div>
-          <div className="chips">
-            <button
-              type="button"
-              className={`chip ${settings.focal_length == null ? "active" : ""}`}
-              onClick={() => set({ focal_length: undefined })}
-            >
-              Auto
-            </button>
-            {FOCAL_LENGTHS.map((mm) => (
-              <button
-                key={mm}
-                type="button"
-                className={`chip ${settings.focal_length === mm ? "active" : ""}`}
-                onClick={() => set({ focal_length: mm })}
-              >
-                {mm}mm
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Grade intensity
-            <span className="fid-val">
-              {settings.grade_intensity == null
-                ? "auto"
-                : String(settings.grade_intensity)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={GRADE_INTENSITY_MIN}
-            max={GRADE_INTENSITY_MAX}
-            step={1}
-            value={settings.grade_intensity ?? 50}
-            onChange={(e) => set({ grade_intensity: Number(e.target.value) })}
-          />
-          <div className="fid-scale">
-            <span>SUBTLE</span>
-            <span>CINEMATIC</span>
-          </div>
-        </div>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Aperture
-            <span className="fid-val">
-              {settings.f_stop == null ? "auto" : `f/${settings.f_stop}`}
-            </span>
-          </div>
-          <div className="chips">
-            <button
-              type="button"
-              className={`chip ${settings.f_stop == null ? "active" : ""}`}
-              onClick={() => set({ f_stop: undefined })}
-            >
-              Auto
-            </button>
-            {F_STOPS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`chip ${settings.f_stop === f ? "active" : ""}`}
-                onClick={() => set({ f_stop: f })}
-              >
-                f/{f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="ctl">
-          <div className="ctl-label">
-            Saturation
-            <span className="fid-val">
-              {settings.saturation == null
-                ? "auto"
-                : String(settings.saturation)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={SATURATION_MIN}
-            max={SATURATION_MAX}
-            step={1}
-            value={settings.saturation ?? 50}
-            onChange={(e) => set({ saturation: Number(e.target.value) })}
-          />
-          <div className="fid-scale">
-            <span>MUTED</span>
-            <span>VIVID</span>
-          </div>
-        </div>
-      </details>
+        <AutoChipGroup
+          label="Aperture"
+          options={F_STOPS.map((f) => ({ id: String(f), label: `f/${f}` }))}
+          value={settings.f_stop == null ? undefined : String(settings.f_stop)}
+          onChange={(v) => set({ f_stop: v == null ? undefined : Number(v) })}
+        />
+        <RangeControl
+          label="Saturation"
+          display={
+            settings.saturation == null ? "auto" : String(settings.saturation)
+          }
+          min={SATURATION_MIN}
+          max={SATURATION_MAX}
+          step={1}
+          value={settings.saturation ?? 50}
+          scale={["MUTED", "VIVID"]}
+          onChange={(v) => set({ saturation: v })}
+        />
+      </ConfigGroup>
 
       <button
         type="button"
@@ -483,45 +384,48 @@ export default function VisualizePanel({
         Reset all configs to default
       </button>
 
-      <div className="ctl">
-        <div className="ctl-label">
-          What should change? <span className="dim">(optional)</span>
+      {/* Sticky footer: prompt + Render always visible, no scrolling */}
+      <div className="render-footer">
+        <div className="ctl">
+          <div className="ctl-label">
+            What should change? <span className="dim">(optional)</span>
+          </div>
+          <textarea
+            className="inp detail-inp"
+            placeholder="e.g. Make the facade exposed concrete · dark teak floor · overcast sky"
+            value={settings.custom_instruction ?? ""}
+            onChange={(e) =>
+              onChange({ ...settings, custom_instruction: e.target.value })
+            }
+          />
         </div>
-        <textarea
-          className="inp detail-inp"
-          placeholder="e.g. Make the facade exposed concrete · dark teak floor · overcast sky"
-          value={settings.custom_instruction ?? ""}
-          onChange={(e) =>
-            onChange({ ...settings, custom_instruction: e.target.value })
-          }
-        />
-      </div>
 
-      <button
-        className="btn-render"
-        onClick={onRender}
-        disabled={busy || disabled}
-      >
-        {busy ? (
-          <>
-            <span className="spinner" /> Rendering… {elapsed}s
-          </>
-        ) : disabled ? (
-          "Import a design to render"
-        ) : (
-          <>
-            Render{" "}
-            {settings.lighting === "golden_hour"
-              ? "golden hour"
-              : settings.style === "photoreal"
-                ? "photoreal"
-                : settings.style}
-          </>
-        )}
-      </button>
-      <div className="dim ctl-note">
-        Renders preserve the imported geometry — only materials, light,
-        environment and atmosphere change.
+        <button
+          className="btn-render"
+          onClick={onRender}
+          disabled={busy || disabled}
+        >
+          {busy ? (
+            <>
+              <span className="spinner" /> Rendering… {elapsed}s
+            </>
+          ) : disabled ? (
+            "Import a design to render"
+          ) : (
+            <>
+              Render{" "}
+              {settings.lighting === "golden_hour"
+                ? "golden hour"
+                : settings.style === "photoreal"
+                  ? "photoreal"
+                  : settings.style}
+            </>
+          )}
+        </button>
+        <div className="dim ctl-note">
+          Renders preserve the imported geometry — only materials, light,
+          environment and atmosphere change.
+        </div>
       </div>
     </aside>
   );
