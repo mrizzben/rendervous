@@ -11,7 +11,7 @@
       "stone": "Use natural stone: realistic masonry, joints, texture and color variation.",
       "custom": ""
     },
-    "lighting_base": "Create physically plausible natural lighting, realistic indirect illumination, contact shadows, reflections and ambient occlusion.",
+    "lighting_base": "Create physically plausible natural lighting, realistic indirect illumination, contact shadows, reflections and ambient occlusion. If the sun, sky, or horizon is blocked by the building from this perspective, it must remain occluded behind the architecture — do not remove roofs or walls to show the light source.",
     "lighting_presets": {
       "daylight": "Clear late-morning daylight: bright natural sun roughly 45–60° above the horizon, crisp short shadows, blue sky with light clouds.",
       "overcast": "Overcast sky: soft diffused daylight, gentle even shadows, muted neutral atmosphere.",
@@ -19,7 +19,7 @@
       "sunset": "Sunset: dramatic warm twilight with the sun barely above the horizon (roughly 0–5°), deep orange to pink sky, long shadows falling into dusk.",
       "night": "Night scene: deep blue twilight, moonlight, warm interior light spilling from the windows."
     },
-    "environment_base": "Add realistic landscaping, vegetation, sky and environmental details only where they do not obscure or modify the building geometry.",
+    "environment_base": "Add realistic landscaping, vegetation, sky and environmental details strictly outside the building footprint and only where they do not obscure or modify the building geometry. Never remove or alter walls, roofs, or structural elements to reveal the environment.",
     "environment_presets": {
       "none": "Keep the surroundings minimal and neutral; do not add vegetation or scenery.",
       "tropical": "Tropical setting: dense palm and broadleaf planting, pools, warm humid atmosphere.",
@@ -36,7 +36,7 @@
     }
   },
   "fidelity": {
-    "strict": "ABSOLUTE RESTRICTION:\nDo not redesign the building.\nDo not modify its geometry.\nDo not change dimensions or proportions.\nDo not add or remove architectural elements.\nDo not change the number or position of windows, doors, floors, columns, balconies, roofs or openings.\n\nThe final image should be recognizable as the exact same building shown in the reference, only rendered as if it physically existed and had been professionally photographed.\nGeometry fidelity is more important than visual creativity.",
+    "strict": "ABSOLUTE RESTRICTION:\nDo not redesign the building.\nDo not modify its geometry.\nDo not change dimensions or proportions.\nDo not add or remove architectural elements.\nDo not change the number or position of windows, doors, floors, columns, balconies, roofs or openings.\nNever produce cutaways, open-air conversions, or transparent walls: all solid roofs and walls must remain 100% solid and opaque.\nIf the building occludes the sun, sky, or environment from this camera angle, the background must remain hidden behind the architecture — never remove or modify structure to reveal environment or lighting.\n\nThe final image should be recognizable as the exact same building shown in the reference, only rendered as if it physically existed and had been professionally photographed.\nGeometry fidelity is more important than visual creativity.",
     "medium": "RESTRICTION:\nPreserve the building core: massing, proportions, floor count, roof geometry and major openings. Surface materials, color, landscaping and atmosphere may be interpreted more freely while the architecture stays recognizable.",
     "creative": "GUIDANCE:\nPreserve the overall massing and proportions of the reference, but freely reimagine materials, details, environment and atmosphere for an artistic result."
   }

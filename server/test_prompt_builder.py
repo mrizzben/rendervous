@@ -68,3 +68,12 @@ def test_no_advanced_settings_unchanged():
     p = build_prompt({**_BASE, "lighting": "daylight"})
     assert "Shot on a" not in p
     assert "raking" not in p
+
+
+def test_strict_fidelity_occlusion_guardrails():
+    p = build_prompt(
+        {**_BASE, "fidelity": 95, "lighting": "sunset", "environment": "tropical"}
+    )
+    assert "never remove or modify structure to reveal environment" in p
+    assert "remain occluded behind the architecture" in p
+    assert "strictly outside the building footprint" in p
