@@ -22,6 +22,38 @@ export const LIGHTINGS = [
 export const LAMP_TEMP_MIN = 2700; // warm white
 export const LAMP_TEMP_MAX = 6000; // daylight
 
+// --- Advanced configs (override presets when set; undefined = auto) --------
+
+// Direction of sunlight relative to the camera. `undefined` = let the
+// lighting preset decide.
+export const SUN_DIRECTIONS = [
+  { id: "front", label: "Front" },
+  { id: "left", label: "Left" },
+  { id: "right", label: "Right" },
+  { id: "behind", label: "Behind" },
+] as const;
+
+export type SunDirectionId = (typeof SUN_DIRECTIONS)[number]["id"];
+
+// Sun height above the horizon in degrees. Full physical range: 0° = on the
+// horizon (sunset/sunrise), 90° = directly overhead (tropical noon).
+// Golden hour sits at 5–12°; usable daylight 30–60°.
+export const SUN_ELEVATION_MIN = 0;
+export const SUN_ELEVATION_MAX = 90;
+
+// Lighting presets with a visible sun; elevation/direction don't apply to
+// overcast (sun behind clouds) or night (below horizon).
+export const SUN_PRESET_IDS = ["daylight", "golden_hour", "sunset"] as const;
+
+// Common architecture-photography focal lengths (mm). 17–24mm = tilt-shift
+// territory for interiors/wide exteriors, 35mm general, 50mm natural
+// perspective, 85mm details.
+export const FOCAL_LENGTHS = [16, 24, 35, 50, 85] as const;
+
+// F-stops. f/8–f/11 is the sharpness sweet spot for archviz; f/2.8–f/4 for
+// shallow depth of field; f/16 the deepest focus before diffraction.
+export const F_STOPS = [2.8, 4, 5.6, 8, 11, 16] as const;
+
 export const MATERIALS = [
   { id: "original", label: "As designed" },
   { id: "concrete", label: "Concrete" },

@@ -88,6 +88,11 @@ export interface Settings {
   material: "original" | "concrete" | "wood" | "stone" | "custom";
   environment: "none" | "tropical" | "urban" | "forest" | "custom";
   lamp_temp?: number; // Kelvin, 2700 (warm white) – 6000 (daylight)
+  // --- Advanced configs (undefined = auto, preset wording stands alone) ---
+  sun_direction?: "front" | "left" | "right" | "behind";
+  sun_elevation?: number; // degrees above horizon, 0–90
+  focal_length?: number; // mm
+  f_stop?: number;
   custom_instruction?: string;
 }
 

@@ -1,11 +1,17 @@
 import type { Settings } from "../api";
 import {
   ENVIRONMENTS,
+  F_STOPS,
+  FOCAL_LENGTHS,
   LAMP_TEMP_MAX,
   LAMP_TEMP_MIN,
   LIGHTINGS,
   MATERIALS,
   STYLES,
+  SUN_DIRECTIONS,
+  SUN_ELEVATION_MAX,
+  SUN_ELEVATION_MIN,
+  SUN_PRESET_IDS,
 } from "../options";
 
 interface VisualizePanelProps {
@@ -57,6 +63,11 @@ export default function VisualizePanel({
   onRender,
   elapsed,
 }: VisualizePanelProps) {
+  const hasSun = SUN_PRESET_IDS.includes(
+    settings.lighting as (typeof SUN_PRESET_IDS)[number],
+  );
+  const set = (patch: Partial<Settings>) => onChange({ ...settings, ...patch });
+
   return (
     <aside className="controls">
       <div className="ctl-head">
@@ -140,6 +151,128 @@ export default function VisualizePanel({
           <span>DAYLIGHT ~6000K</span>
         </div>
       </div>
+
+      <details className="adv">
+        <summary>Advanced configs</summary>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Sun direction
+            <span className="fid-val">
+              {settings.sun_direction ?? "auto"}
+            </span>
+          </div>
+          <div className="chips">
+            <button
+              type="button"
+              className={`chip ${!settings.sun_direction ? "active" : ""}`}
+              onClick={() => set({ sun_direction: undefined })}
+              disabled={busy}
+            >
+              Auto
+            </button>
+            {SUN_DIRECTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                className={`chip ${settings.sun_direction === o.id ? "active" : ""}`}
+                onClick={() => set({ sun_direction: o.id })}
+                disabled={busy}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Sun elevation
+            <span className="fid-val">
+              {settings.sun_elevation != null
+                ? `${settings.sun_elevation}°`
+                : "auto"}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={SUN_ELEVATION_MIN}
+            max={SUN_ELEVATION_MAX}
+            step={1}
+            value={settings.sun_elevation ?? 45}
+            onChange={(e) =>
+              set({ sun_elevation: Number(e.target.value) })
+            }
+            disabled={busy || !hasSun}
+          />
+          <div className="fid-scale">
+            <span>HORIZON 0°</span>
+            <span>NOON 90°</span>
+          </div>
+        </div>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Focal length
+            <span className="fid-val">
+              {settings.focal_length != null
+                ? `${settings.focal_length}mm`
+                : "auto"}
+            </span>
+          </div>
+          <div className="chips">
+            <button
+              type="button"
+              className={`chip ${settings.focal_length == null ? "active" : ""}`}
+              onClick={() => set({ focal_length: undefined })}
+              disabled={busy}
+            >
+              Auto
+            </button>
+            {FOCAL_LENGTHS.map((mm) => (
+              <button
+                key={mm}
+                type="button"
+                className={`chip ${settings.focal_length === mm ? "active" : ""}`}
+                onClick={() => set({ focal_length: mm })}
+                disabled={busy}
+              >
+                {mm}mm
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Aperture
+            <span className="fid-val">
+              {settings.f_stop != null ? `f/${settings.f_stop}` : "auto"}
+            </span>
+          </div>
+          <div className="chips">
+            <button
+              type="button"
+              className={`chip ${settings.f_stop == null ? "active" : ""}`}
+              onClick={() => set({ f_stop: undefined })}
+              disabled={busy}
+            >
+              Auto
+            </button>
+            {F_STOPS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`chip ${settings.f_stop === f ? "active" : ""}`}
+                onClick={() => set({ f_stop: f })}
+                disabled={busy}
+              >
+                f/{f}
+              </button>
+            ))}
+          </div>
+        </div>
+      </details>
 
       <div className="ctl">
         <div className="ctl-label">

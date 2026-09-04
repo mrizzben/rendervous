@@ -809,6 +809,43 @@ input[type="range"]:disabled {
   color: #5f6672;
 }
 
+/* advanced configs collapsible panel */
+.adv {
+  border-top: 1px solid #1d222b;
+  padding-top: 10px;
+}
+.adv summary {
+  cursor: pointer;
+  user-select: none;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #8c94a2;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.adv summary::before {
+  content: "▸";
+  font-size: 9px;
+  color: #5f6672;
+  transition: transform 0.15s;
+}
+.adv[open] summary::before {
+  transform: rotate(90deg);
+}
+.adv summary::-webkit-details-marker {
+  display: none;
+}
+.adv summary:hover {
+  color: #cdd3dd;
+}
+.adv .ctl:first-of-type {
+  margin-top: 10px;
+}
+
 .detail-inp {
   min-height: 62px;
   resize: vertical;
