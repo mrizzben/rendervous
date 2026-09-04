@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { Design, ProjectSummary } from "../api";
-import { ACCEPTED_LIST, ACCEPTED_TYPES } from "../api";
+import { ACCEPTED_LIST, ACCEPTED_TYPES, MAX_UPLOAD_MB } from "../api";
 import {
   ArchiveIcon,
   PencilIcon,
@@ -54,6 +54,10 @@ export default function LeftRail({
     if (!f) return;
     if (!ACCEPTED_LIST.includes(f.type)) {
       setErr("Only JPEG, PNG or WebP images.");
+      return;
+    }
+    if (f.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      setErr(`Image is too large — the max file size is ${MAX_UPLOAD_MB} MB.`);
       return;
     }
     onUpload(f);

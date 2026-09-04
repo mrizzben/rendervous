@@ -373,6 +373,10 @@ export function measureImage(
 export const ACCEPTED_LIST = ["image/jpeg", "image/png", "image/webp"];
 export const ACCEPTED_TYPES = ACCEPTED_LIST.join(",");
 
+// Max design-import file size in MB. Matches nginx client_max_body_size
+// (nginx.conf) — the upload is multipart, so file bytes ≈ request body.
+export const MAX_UPLOAD_MB = 10;
+
 // --- polling ----------------------------------------------------------------
 
 export async function pollUntil<T>(

@@ -268,7 +268,12 @@ textarea:focus {
 }
 .rail-manage {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+}
+.rail-manage .rail-mini {
+  flex: 1 0 auto;
+  justify-content: center;
 }
 .rail-mini {
   display: inline-flex;
