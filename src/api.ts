@@ -99,7 +99,7 @@ export interface Settings {
   finish?: "matte" | "polished" | "weathered";
   sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy";
   // >>> grade-intensity: grade_intensity?: number; // 0-100 here <<<
-  // >>> saturation: saturation?: number; // 0-100 here <<<
+  saturation?: number; // 0-100, 50 = natural
   custom_instruction?: string;
 }
 

@@ -132,3 +132,23 @@ def test_sky_absent_by_default():
 # >>> tests: grade-intensity (grade_ tests here) <<<
 
 # >>> tests: saturation (saturation_ tests here) <<<
+
+
+def test_saturation_tiers():
+    low = build_prompt({**_BASE, "saturation": 5})
+    mid = build_prompt({**_BASE, "saturation": 50})
+    high = build_prompt({**_BASE, "saturation": 95})
+    assert "almost fully desaturated" in low
+    assert "natural and true to life" in mid
+    assert "hyper-saturated" in high
+
+
+def test_saturation_out_of_range_ignored():
+    for v in (120, -10):
+        p = build_prompt({**_BASE, "saturation": v})
+        assert "saturation" not in p, v
+
+
+def test_saturation_absent_by_default():
+    p = build_prompt({**_BASE})
+    assert "saturation" not in p

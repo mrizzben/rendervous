@@ -10,6 +10,8 @@ import {
   MATERIALS,
   FINISHES,
   SKIES,
+  SATURATION_MAX,
+  SATURATION_MIN,
   STYLES,
   SEASONS,
   SUN_DIRECTIONS,
@@ -421,6 +423,29 @@ export default function VisualizePanel({
                 f/{f}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="ctl">
+          <div className="ctl-label">
+            Saturation
+            <span className="fid-val">
+              {settings.saturation == null
+                ? "auto"
+                : String(settings.saturation)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={SATURATION_MIN}
+            max={SATURATION_MAX}
+            step={1}
+            value={settings.saturation ?? 50}
+            onChange={(e) => set({ saturation: Number(e.target.value) })}
+          />
+          <div className="fid-scale">
+            <span>MUTED</span>
+            <span>VIVID</span>
           </div>
         </div>
       </details>

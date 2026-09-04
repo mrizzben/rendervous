@@ -117,4 +117,7 @@ export const SKIES = [
 
 // >>> grade-intensity: GRADE_INTENSITY_MIN/MAX consts here <<<
 
-// >>> saturation: SATURATION_MIN/MAX consts here <<<
+// Saturation scale for the color grade. 50 ≈ natural, 0 ≈ monochrome,
+// 100 ≈ hyper-saturated.
+export const SATURATION_MIN = 0;
+export const SATURATION_MAX = 100;

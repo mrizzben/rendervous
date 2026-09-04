@@ -243,10 +243,23 @@ def _grade_intensity(s):
 def _saturation(s):
     """Color saturation sentence for the PHOTOGRAPHY section.
 
-    (feature: saturation) Stub returns "" until its branch implements it.
-    Reads s.get("saturation"): 0-100; None = auto (natural saturation).
+    Reads s.get("saturation"): 0-100 (50 = natural); None = auto, i.e. the
+    style preset's color wording stands alone.
     """
-    return ""
+    v = s.get("saturation")
+    if not isinstance(v, (int, float)) or not 0 <= v <= 100:
+        return ""
+    if v < 15:
+        tone = "nearly monochrome, almost fully desaturated"
+    elif v < 40:
+        tone = "desaturated and muted, understated colors"
+    elif v <= 65:
+        tone = "natural and true to life"
+    elif v <= 85:
+        tone = "rich and vivid, with intensified color"
+    else:
+        tone = "hyper-saturated, with bold intensified color"
+    return f"\nColor saturation: {tone}."
 
 
 def build_prompt(settings):
