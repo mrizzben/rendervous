@@ -125,11 +125,54 @@ def _advanced_photography(s):
 def _season_weather(s):
     """Season + weather sentences for the ENVIRONMENT section.
 
-    (feature: season-weather) Stub returns "" until its branch implements it.
-    Reads s.get("season") and s.get("weather"); unset/None means auto — the
-    environment preset wording stands alone.
+    (feature: season-weather) Reads s.get("season") and s.get("weather");
+    unset/None means auto — the environment preset wording stands alone.
     """
-    return ""
+    seasons = {
+        "summer": (
+            "Season: midsummer, with dense green foliage and full leafy "
+            "trees."
+        ),
+        "autumn": (
+            "Season: autumn, with orange and red autumn foliage and some "
+            "fallen leaves on the ground."
+        ),
+        "winter": (
+            "Season: winter, with bare deciduous branches and snow covering "
+            "horizontal surfaces, cold muted palette."
+        ),
+        "spring": (
+            "Season: spring, with fresh light-green foliage and blooming "
+            "trees."
+        ),
+    }
+    weathers = {
+        "clear": "Weather: clear, with no precipitation.",
+        "overcast": (
+            "Weather: overcast, with a fully cloud-covered sky and soft "
+            "even light."
+        ),
+        "fog": (
+            "Weather: light fog, with atmospheric haze increasing with "
+            "distance."
+        ),
+        "rain": (
+            "Weather: light rain, with wet reflective ground surfaces and "
+            "overcast light."
+        ),
+        "snow": (
+            "Weather: snowfall, with falling snowflakes and snow "
+            "accumulating on horizontal surfaces."
+        ),
+    }
+    lines = []
+    season = seasons.get(s.get("season"))
+    if season:
+        lines.append(season)
+    weather = weathers.get(s.get("weather"))
+    if weather:
+        lines.append(weather)
+    return "\n" + "\n".join(lines) if lines else ""
 
 
 def _material_finish(s):

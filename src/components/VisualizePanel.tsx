@@ -9,10 +9,12 @@ import {
   LIGHTINGS,
   MATERIALS,
   STYLES,
+  SEASONS,
   SUN_DIRECTIONS,
   SUN_ELEVATION_MAX,
   SUN_ELEVATION_MIN,
   SUN_PRESET_IDS,
+  WEATHERS,
 } from "../options";
 
 interface VisualizePanelProps {
@@ -100,6 +102,58 @@ export default function VisualizePanel({
         value={settings.environment}
         onChange={(v) => onChange({ ...settings, environment: v })}
       />
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Season
+          <span className="fid-val">{settings.season ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.season ? "" : "active"}`}
+            onClick={() => set({ season: undefined })}
+          >
+            Auto
+          </button>
+          {SEASONS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.season === o.id ? "active" : ""}`}
+              onClick={() => set({ season: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Weather
+          <span className="fid-val">{settings.weather ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.weather ? "" : "active"}`}
+            onClick={() => set({ weather: undefined })}
+          >
+            Auto
+          </button>
+          {WEATHERS.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.weather === o.id ? "active" : ""}`}
+              onClick={() => set({ weather: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="ctl">
         <div className="ctl-label">

@@ -94,7 +94,8 @@ export interface Settings {
   focal_length?: number; // mm
   f_stop?: number;
   // --- P1 features (each branch fills ONLY its own marker line) ---
-  // >>> season-weather: season?: "summer" | "autumn" | "winter" | "spring"; and weather?: "clear" | "overcast" | "fog" | "rain" | "snow"; here <<<
+  season?: "summer" | "autumn" | "winter" | "spring";
+  weather?: "clear" | "overcast" | "fog" | "rain" | "snow";
   // >>> material-finish: finish?: "matte" | "polished" | "weathered"; here <<<
   // >>> sky-type: sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy"; here <<<
   // >>> grade-intensity: grade_intensity?: number; // 0-100 here <<<

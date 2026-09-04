@@ -85,7 +85,20 @@ export const ENVIRONMENTS = [
 
 // --- P1 features (each branch fills ONLY its own marker) -------------------
 
-// >>> season-weather: SEASONS + WEATHERS chip option consts here <<<
+export const SEASONS = [
+  { id: "summer", label: "Summer" },
+  { id: "autumn", label: "Autumn" },
+  { id: "winter", label: "Winter" },
+  { id: "spring", label: "Spring" },
+] as const;
+
+export const WEATHERS = [
+  { id: "clear", label: "Clear" },
+  { id: "overcast", label: "Overcast" },
+  { id: "fog", label: "Fog" },
+  { id: "rain", label: "Rain" },
+  { id: "snow", label: "Snow" },
+] as const;
 
 // >>> material-finish: FINISHES chip option const here <<<
 

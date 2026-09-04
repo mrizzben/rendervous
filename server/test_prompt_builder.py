@@ -84,6 +84,28 @@ def test_strict_fidelity_occlusion_guardrails():
 
 # >>> tests: season-weather (season_/weather_ tests here) <<<
 
+
+def test_season_appended_to_environment():
+    p = build_prompt({**_BASE, "season": "winter"})
+    assert "bare deciduous branches" in p
+
+
+def test_weather_appended():
+    p = build_prompt({**_BASE, "weather": "fog"})
+    assert "haze increasing with distance" in p
+
+
+def test_season_and_weather_combined():
+    p = build_prompt({**_BASE, "season": "autumn", "weather": "rain"})
+    assert "autumn foliage" in p
+    assert "wet reflective ground surfaces" in p
+
+
+def test_season_weather_absent_by_default():
+    p = build_prompt(dict(_BASE))
+    assert "Season:" not in p
+    assert "Weather:" not in p
+
 # >>> tests: material-finish (finish_ tests here) <<<
 
 # >>> tests: sky-type (sky_ tests here) <<<
