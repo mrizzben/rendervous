@@ -23,6 +23,7 @@ import {
   measureImage,
   pollUntil,
   restoreRevision,
+  renameProject,
   setDesignArchived,
   setProjectArchived,
   shortModel,
@@ -239,6 +240,17 @@ export default function App() {
 
   // ---- project & design archive/delete -----------------------------------
 
+  const handleRenameProject = async (id: number, name: string) => {
+    try {
+      await renameProject(id, name);
+      setProjects((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, name } : x)),
+      );
+    } catch (e) {
+      fail(e);
+    }
+  };
+
   const handleArchiveProject = async (id: number) => {
     const p = projects.find((x) => x.id === id);
     const archiving = !p?.archived;
@@ -353,6 +365,7 @@ export default function App() {
           onProject={loadProject}
           onDesign={setDesignId}
           onNewProject={handleNewProject}
+          onRenameProject={handleRenameProject}
           onUpload={handleUpload}
           onArchiveProject={handleArchiveProject}
           onDeleteProject={handleDeleteProject}

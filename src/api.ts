@@ -215,6 +215,13 @@ export function getProject(id: number): Promise<ProjectDetail> {
   return jfetch<ProjectDetail>(`/api/projects/${id}`);
 }
 
+export function renameProject(id: number, name: string): Promise<unknown> {
+  return jfetch<unknown>(`/api/projects/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
 export function setProjectArchived(
   id: number,
   archived: boolean,

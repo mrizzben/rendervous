@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 import type { Design, ProjectSummary } from "../api";
 import { ACCEPTED_LIST, ACCEPTED_TYPES } from "../api";
-import { ArchiveIcon, PlusIcon, RestoreIcon, TrashIcon } from "../icons";
+import {
+  ArchiveIcon,
+  PencilIcon,
+  PlusIcon,
+  RestoreIcon,
+  TrashIcon,
+} from "../icons";
 
 interface LeftRailProps {
   projects: ProjectSummary[];
@@ -12,6 +18,7 @@ interface LeftRailProps {
   onProject: (id: number) => void;
   onDesign: (id: number) => void;
   onNewProject: (name: string) => void;
+  onRenameProject: (id: number, name: string) => void;
   onUpload: (file: File) => void;
   onArchiveProject: (id: number) => void;
   onDeleteProject: (id: number) => void;
@@ -28,6 +35,7 @@ export default function LeftRail({
   onProject,
   onDesign,
   onNewProject,
+  onRenameProject,
   onUpload,
   onArchiveProject,
   onDeleteProject,
@@ -35,6 +43,8 @@ export default function LeftRail({
   onDeleteDesign,
 }: LeftRailProps) {
   const [newName, setNewName] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
   const [err, setErr] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,6 +60,12 @@ export default function LeftRail({
   };
 
   const activeProject = projects.find((p) => p.id === projectId) ?? null;
+  const commitRename = () => {
+    if (renaming && renameValue.trim() && renameValue.trim() !== activeProject?.name) {
+      onRenameProject(projectId!, renameValue.trim());
+    }
+    setRenaming(false);
+  };
   const shownDesigns = showArchived
     ? designs
     : designs.filter((d) => !d.archived);
@@ -73,36 +89,62 @@ export default function LeftRail({
             </option>
           ))}
         </select>
-        <div className="new-proj-row">
+        {renaming ? (
           <input
             className="inp new-proj"
-            placeholder="new project…"
-            value={newName}
-            disabled={busy}
-            onChange={(e) => setNewName(e.target.value)}
+            value={renameValue}
+            autoFocus
+            onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && newName.trim()) {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            onBlur={commitRename}
+          />
+        ) : (
+          <div className="new-proj-row">
+            <input
+              className="inp new-proj"
+              placeholder="new project…"
+              value={newName}
+              disabled={busy}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newName.trim()) {
+                  onNewProject(newName.trim());
+                  setNewName("");
+                }
+              }}
+            />
+            <button
+              className="btn new-proj-add"
+              disabled={busy || !newName.trim()}
+              title="Create project"
+              aria-label="Create project"
+              onClick={() => {
+                if (!newName.trim()) return;
                 onNewProject(newName.trim());
                 setNewName("");
-              }
-            }}
-          />
-          <button
-            className="btn new-proj-add"
-            disabled={busy || !newName.trim()}
-            title="Create project"
-            aria-label="Create project"
-            onClick={() => {
-              if (!newName.trim()) return;
-              onNewProject(newName.trim());
-              setNewName("");
-            }}
-          >
-            <PlusIcon size={14} />
-          </button>
-        </div>
+              }}
+            >
+              <PlusIcon size={14} />
+            </button>
+          </div>
+        )}
         {activeProject && (
           <div className="rail-manage">
+            <button
+              className="rail-mini"
+              disabled={busy}
+              title="Rename this project"
+              onClick={() => {
+                setRenameValue(activeProject!.name);
+                setRenaming(true);
+              }}
+            >
+              <PencilIcon size={13} />
+              <span>Rename</span>
+            </button>
             <button
               className="rail-mini"
               disabled={busy}
