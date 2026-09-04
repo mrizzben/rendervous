@@ -158,9 +158,7 @@ export default function VisualizePanel({
         <div className="ctl">
           <div className="ctl-label">
             Sun direction
-            <span className="fid-val">
-              {settings.sun_direction ?? "auto"}
-            </span>
+            <span className="fid-val">{settings.sun_direction ?? "auto"}</span>
           </div>
           <div className="chips">
             <button
@@ -200,9 +198,7 @@ export default function VisualizePanel({
             max={SUN_ELEVATION_MAX}
             step={1}
             value={settings.sun_elevation ?? 45}
-            onChange={(e) =>
-              set({ sun_elevation: Number(e.target.value) })
-            }
+            onChange={(e) => set({ sun_elevation: Number(e.target.value) })}
             disabled={busy || !hasSun}
           />
           <div className="fid-scale">

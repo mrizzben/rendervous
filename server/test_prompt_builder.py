@@ -39,9 +39,7 @@ def test_sun_direction_raking_light():
 
 
 def test_sun_elevation_overrides_preset_height():
-    p = build_prompt(
-        {**_BASE, "lighting": "golden_hour", "sun_elevation": 30}
-    )
+    p = build_prompt({**_BASE, "lighting": "golden_hour", "sun_elevation": 30})
     assert "exactly 30° above the horizon" in p
 
 
@@ -52,9 +50,7 @@ def test_sun_elevation_ignored_without_direct_sun():
 
 
 def test_focal_length_and_f_stop():
-    p = build_prompt(
-        {**_BASE, "lighting": "daylight", "focal_length": 35, "f_stop": 8}
-    )
+    p = build_prompt({**_BASE, "lighting": "daylight", "focal_length": 35, "f_stop": 8})
     assert "35mm lens at f/8, sharp focus across the frame" in p
 
 
