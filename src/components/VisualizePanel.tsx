@@ -130,7 +130,10 @@ export default function VisualizePanel({
           onChange={(e) =>
             onChange({ ...settings, lamp_temp: Number(e.target.value) })
           }
-          disabled={busy}
+          disabled={
+            busy ||
+            (settings.lighting !== "night" && settings.lighting !== "sunset")
+          }
         />
         <div className="fid-scale">
           <span>WARM WHITE ~2700K</span>

@@ -59,8 +59,14 @@ def build_prompt(settings):
     s.update(settings or {})
 
     lighting = _section("lighting_presets", "lighting_base", s["lighting"])
+    # Lamp temperature only applies when artificial light sources dominate
+    # the scene (night, sunset) — ignored for every other lighting preset.
     kelvin = s.get("lamp_temp")
-    if isinstance(kelvin, (int, float)) and 1500 <= kelvin <= 10000:
+    if (
+        s["lighting"] in ("night", "sunset")
+        and isinstance(kelvin, (int, float))
+        and 1500 <= kelvin <= 10000
+    ):
         tone = (
             "warm amber"
             if kelvin < 3500
@@ -69,7 +75,7 @@ def build_prompt(settings):
             else "cool slightly blue-tinted"
         )
         lighting += (
-            f"\nAll non-natural light sources (lamps, lightbulbs, interior "
+            f"\nAll artificial light sources (lamps, lightbulbs, interior "
             f"fixtures) emit {tone} light at approximately {kelvin:.0f}K."
         )
 
