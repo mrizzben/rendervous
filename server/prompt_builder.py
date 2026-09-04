@@ -202,13 +202,33 @@ def _material_finish(s):
     return "\n" + finish if finish else ""
 
 
+_SKY_SENTENCES = {
+    "clear_blue": (
+        "Sky: clear deep blue with excellent long-distance visibility."
+    ),
+    "scattered_clouds": (
+        "Sky: bright blue with scattered white cumulus clouds, sunlight "
+        "broken by passing clouds."
+    ),
+    "overcast_dramatic": (
+        "Sky: dramatic layered overcast clouds with strong contrast between "
+        "bright sky and dark cloud bases, moody diffused light."
+    ),
+    "hazy": (
+        "Sky: pale and hazy, with soft light diffusing through atmospheric "
+        "haze near the horizon."
+    ),
+}
+
+
 def _sky_type(s):
     """Sky sentence for the LIGHTING section (the sky drives the light).
 
-    (feature: sky-type) Stub returns "" until its branch implements it.
-    Reads s.get("sky"); None = auto — the lighting preset's sky wording stands.
+    (feature: sky-type) Reads s.get("sky"); None = auto — the lighting
+    preset's sky wording stands alone.
     """
-    return ""
+    sentence = _SKY_SENTENCES.get(s.get("sky"))
+    return "\n" + sentence if sentence else ""
 
 
 def _grade_intensity(s):

@@ -106,7 +106,14 @@ export const FINISHES = [
   { id: "weathered", label: "Weathered" },
 ] as const;
 
-// >>> sky-type: SKIES chip option const here <<<
+// Sky presets (Sun & Sky). The sky drives the light: describing it lets the
+// model re-light the scene to match (Lumion Real Skies approach).
+export const SKIES = [
+  { id: "clear_blue", label: "Clear blue" },
+  { id: "scattered_clouds", label: "Scattered clouds" },
+  { id: "overcast_dramatic", label: "Dramatic overcast" },
+  { id: "hazy", label: "Hazy" },
+] as const;
 
 // >>> grade-intensity: GRADE_INTENSITY_MIN/MAX consts here <<<
 

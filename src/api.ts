@@ -97,7 +97,7 @@ export interface Settings {
   season?: "summer" | "autumn" | "winter" | "spring";
   weather?: "clear" | "overcast" | "fog" | "rain" | "snow";
   finish?: "matte" | "polished" | "weathered";
-  // >>> sky-type: sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy"; here <<<
+  sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy";
   // >>> grade-intensity: grade_intensity?: number; // 0-100 here <<<
   // >>> saturation: saturation?: number; // 0-100 here <<<
   custom_instruction?: string;

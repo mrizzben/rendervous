@@ -9,6 +9,7 @@ import {
   LIGHTINGS,
   MATERIALS,
   FINISHES,
+  SKIES,
   STYLES,
   SEASONS,
   SUN_DIRECTIONS,
@@ -91,6 +92,33 @@ export default function VisualizePanel({
         value={settings.lighting}
         onChange={(v) => onChange({ ...settings, lighting: v })}
       />
+
+      <div className="ctl">
+        <div className="ctl-label">
+          Sky
+          <span className="fid-val">{settings.sky ?? "auto"}</span>
+        </div>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip ${settings.sky ? "" : "active"}`}
+            onClick={() => set({ sky: undefined })}
+          >
+            Auto
+          </button>
+          {SKIES.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`chip ${settings.sky === o.id ? "active" : ""}`}
+              onClick={() => set({ sky: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <ChipGroup
         label="Materials"
         options={MATERIALS}

@@ -120,6 +120,15 @@ def test_finish_absent_by_default():
 
 # >>> tests: sky-type (sky_ tests here) <<<
 
+
+def test_sky_appended_to_lighting():
+    p = build_prompt({**_BASE, "sky": "scattered_clouds"})
+    assert "scattered white cumulus clouds" in p
+
+
+def test_sky_absent_by_default():
+    assert "Sky:" not in build_prompt({**_BASE})
+
 # >>> tests: grade-intensity (grade_ tests here) <<<
 
 # >>> tests: saturation (saturation_ tests here) <<<
