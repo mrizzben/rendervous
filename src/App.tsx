@@ -36,7 +36,12 @@ import Header from "./components/Header";
 import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
-import { DEFAULT_SETTINGS } from "./options";
+import {
+  DEFAULT_SETTINGS,
+  loadPresets,
+  savePresets,
+  type Preset,
+} from "./options";
 
 const RECOMMENDED_ID = "google/gemini-3.1-flash-image";
 
@@ -59,6 +64,7 @@ export default function App() {
   const [designRatio, setDesignRatio] = useState<AspectRatio | "auto" | null>(
     null,
   );
+  const [presets, setPresets] = useState<Preset[]>(() => loadPresets());
 
   const model = useMemo(
     () => models.find((m) => m.id === modelId) ?? null,
@@ -310,6 +316,32 @@ export default function App() {
     }
   };
 
+  // ---- user presets (model + visualization config + additional prompt) -----
+
+  const handleSavePreset = () => {
+    const name = window.prompt("Name the preset", "My Preset");
+    if (name === null) return; // cancelled
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const preset: Preset = { name: trimmed, modelId, settings };
+    const next = presets.some((p) => p.name === trimmed)
+      ? presets.map((p) => (p.name === trimmed ? preset : p))
+      : [...presets, preset];
+    savePresets(next);
+    setPresets(next);
+  };
+
+  const handleApplyPreset = (p: Preset) => {
+    setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
+    if (models.some((m) => m.id === p.modelId)) setModelId(p.modelId);
+  };
+
+  const handleDeletePreset = (name: string) => {
+    const next = presets.filter((p) => p.name !== name);
+    savePresets(next);
+    setPresets(next);
+  };
+
   const toggleCompare = (id: number) => {
     setCompareIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -404,6 +436,10 @@ export default function App() {
           engineName={model ? shortModel(model.id) : "…"}
           onRender={() => runRender()}
           elapsed={elapsed}
+          presets={presets}
+          onSavePreset={handleSavePreset}
+          onApplyPreset={handleApplyPreset}
+          onDeletePreset={handleDeletePreset}
         />
       </div>
 

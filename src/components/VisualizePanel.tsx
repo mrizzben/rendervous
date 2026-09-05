@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Settings } from "../api";
+import type { Preset } from "../options";
 import {
   DEFAULT_SETTINGS,
   ENVIRONMENTS,
@@ -32,6 +33,10 @@ interface VisualizePanelProps {
   engineName: string;
   onRender: () => void;
   elapsed: number;
+  presets: Preset[];
+  onSavePreset: () => void;
+  onApplyPreset: (p: Preset) => void;
+  onDeletePreset: (name: string) => void;
 }
 
 function ChipGroup<T extends string>({
@@ -186,6 +191,10 @@ export default function VisualizePanel({
   engineName,
   onRender,
   elapsed,
+  presets,
+  onSavePreset,
+  onApplyPreset,
+  onDeletePreset,
 }: VisualizePanelProps) {
   const hasSun = SUN_PRESET_IDS.includes(
     settings.lighting as (typeof SUN_PRESET_IDS)[number],
@@ -375,6 +384,40 @@ export default function VisualizePanel({
           onChange={(v) => set({ saturation: v })}
         />
       </ConfigGroup>
+
+      {/* Saved presets: one click restores a stored model + config combo */}
+      <div className="ctl">
+        <div className="ctl-label">Presets</div>
+        <div className="chips">
+          <button
+            type="button"
+            className="chip preset-save"
+            onClick={onSavePreset}
+            disabled={busy}
+          >
+            + Save
+          </button>
+          {presets.map((p) => (
+            <span key={p.name} className="chip preset-chip">
+              <button
+                type="button"
+                className="preset-apply"
+                onClick={() => onApplyPreset(p)}
+              >
+                {p.name}
+              </button>
+              <button
+                type="button"
+                className="preset-del"
+                aria-label={`Delete preset ${p.name}`}
+                onClick={() => onDeletePreset(p.name)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
 
       <button
         type="button"

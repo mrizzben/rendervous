@@ -751,6 +751,47 @@ textarea:focus {
   border-color: #63e6be;
   color: #7fe0c3;
 }
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* preset bar: save current model+config combo, apply or delete saved ones */
+.preset-save {
+  border-style: dashed;
+  color: #8c94a2;
+}
+.preset-save:hover:not(:disabled) {
+  color: #63e6be;
+  border-color: #63e6be;
+}
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 8px;
+  cursor: default;
+}
+.preset-apply {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.preset-del {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #8c94a2;
+  cursor: pointer;
+}
+.preset-del:hover {
+  color: #ff7a7a;
+}
 
 /* custom range sliders — WebKit & Firefox */
 input[type="range"] {
