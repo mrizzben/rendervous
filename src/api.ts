@@ -302,26 +302,24 @@ export function deleteRevision(id: number): Promise<unknown> {
 // --- aspect ratio detection ------------------------------------------------
 
 /** Supported output aspect ratios, in preference order (first wins ties). */
+// Aspect ratios accepted by the OpenRouter Image API (normalized enum, see
+// https://openrouter.ai/docs/guides/overview/multimodal/image-generation).
 export const ASPECT_RATIOS = [
   "1:1",
-  "1:2",
-  "1:4",
-  "1:8",
-  "2:1",
-  "2:3",
-  "3:2",
-  "3:4",
-  "4:1",
+  "16:9",
+  "9:16",
   "4:3",
+  "3:4",
+  "3:2",
+  "2:3",
   "4:5",
   "5:4",
+  "1:2",
+  "2:1",
+  "1:4",
+  "4:1",
+  "1:8",
   "8:1",
-  "9:16",
-  "16:9",
-  "9:19.5",
-  "19.5:9",
-  "9:20",
-  "20:9",
   "9:21",
   "21:9",
 ] as const;
@@ -329,7 +327,7 @@ export const ASPECT_RATIOS = [
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
 /** Snap an image's dimensions to the nearest supported ratio.
- *  Compares log-ratios so 1:2 and 2:1 sit equal-and-opposite (a 2x-tall
+ *  Compares log-ratios so 9:16 and 16:9 sit equal-and-opposite (a 2x-tall
  *  image is as "far" from 1:1 as a 2x-wide one). Ties: earliest in list.
  *  When `tol` is given and the nearest ratio is farther than `tol` (log
  *  distance), returns "auto" instead — degenerate inputs get a free-form

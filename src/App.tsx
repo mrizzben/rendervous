@@ -38,7 +38,7 @@ import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
 import { DEFAULT_SETTINGS } from "./options";
 
-const RECOMMENDED_ID = "bytedance-seed/seedream-5-0-pro";
+const RECOMMENDED_ID = "google/gemini-3.1-flash-image";
 
 export default function App() {
   const [models, setModels] = useState<ModelInfo[]>([]);
