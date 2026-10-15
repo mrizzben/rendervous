@@ -78,14 +78,26 @@ CREATE INDEX IF NOT EXISTS idx_revisions_parent ON revisions(parent_revision_id)
 """
 
 
+def _columns(table: str) -> set[str]:
+    """Column names of `table`, bound as a parameter (no SQL interpolation)."""
+    return {
+        r["name"]
+        for r in conn().execute(
+            "SELECT name FROM pragma_table_info(?)", (table,)
+        )
+    }
+
+
 def _migrate() -> None:
     """Add columns introduced after the first schema (existing data/ DBs)."""
-    for table in ("projects", "designs"):
-        cols = {r["name"] for r in conn().execute(f"PRAGMA table_info({table})")}
-        if "archived" not in cols:
-            conn().execute(
-                f"ALTER TABLE {table} ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
-            )
+    if "archived" not in _columns("projects"):
+        conn().execute(
+            "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+        )
+    if "archived" not in _columns("designs"):
+        conn().execute(
+            "ALTER TABLE designs ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+        )
     conn().commit()
 
 
