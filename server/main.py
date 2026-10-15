@@ -442,7 +442,9 @@ def delete_revision(revision_id: int):
     rev = db.delete_revision(revision_id)
     if not rev:
         raise HTTPException(status_code=404, detail="revision not found")
-    Path(os.path.join(db.IMAGES_DIR, rev["image_path"])).unlink(missing_ok=True)
+    Path(os.path.join(db.IMAGES_DIR, os.path.basename(rev["image_path"]))).unlink(
+        missing_ok=True
+    )
     # Deleting the *current* revision would leave current_revision_id dangling:
     # the canvas blanks and the next render branches off a ghost id.
     viz = db.get_visualization(rev["visualization_id"])
