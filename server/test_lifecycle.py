@@ -15,6 +15,8 @@ import asyncio
 import io
 import json
 import os
+import struct
+import zlib
 
 from fastapi import HTTPException, UploadFile
 from PIL import Image
@@ -34,6 +36,25 @@ def _png(size=(32, 32), color=(120, 120, 120)) -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", size, color).save(buf, "PNG")
     return buf.getvalue()
+
+
+def _bomb_png(width=40000, height=40000) -> bytes:
+    """PNG header declaring huge dims; no pixel data is ever shipped."""
+
+    def chunk(tag, data):
+        c = tag + data
+        return struct.pack(">I", len(data)) + c + struct.pack(
+            ">I", zlib.crc32(c) & 0xFFFFFFFF
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
+    idat = zlib.compress(b"\x00\x00" * 8)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", idat)
+        + chunk(b"IEND", b"")
+    )
 
 
 def _store(data: bytes) -> str:
@@ -127,6 +148,7 @@ assert got["image_url"].endswith(".png"), got  # bytes decide the format
 
 for payload, expected, label in (
     (b"#!/bin/sh\necho hi\n", 400, "non-image"),
+    (_bomb_png(), 400, "pixel bomb"),
     (b"\x89PNG\r\n\x1a\n" + b"0" * (10 * 1024 * 1024 + 1), 413, "oversize"),
 ):
     try:

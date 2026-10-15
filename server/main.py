@@ -150,6 +150,10 @@ async def _read_upload(upload: UploadFile) -> tuple[bytes, str]:
         img = Image.open(io.BytesIO(raw))
         fmt = (img.format or "").lower()
         img.verify()
+    except Image.DecompressionBombError as e:
+        raise HTTPException(
+            status_code=400, detail="Image is too large to process"
+        ) from e
     except (UnidentifiedImageError, OSError) as e:
         raise HTTPException(
             status_code=400, detail="Unsupported or corrupt image"
