@@ -393,11 +393,19 @@ export async function pollUntil<T>(
   fn: () => Promise<T>,
   isDone: (v: T) => boolean,
   intervalMs = 2000,
+  timeoutMs = 900_000,
 ): Promise<T> {
+  // A job that never reaches a terminal state (worker died, server restarted
+  // mid-render) must not spin the Render button forever.
+  const t0 = Date.now();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const v = await wait(0).then(fn);
     if (isDone(v)) return v;
+    if (Date.now() - t0 > timeoutMs)
+      throw new Error(
+        "Render timed out — the job may still finish; check the filmstrip later.",
+      );
     await wait(intervalMs);
   }
 }
