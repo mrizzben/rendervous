@@ -86,6 +86,13 @@ def _upload(pid, data: bytes, filename="x.png"):
     )
 
 
+# Self-heal: a run that crashes mid-block (or user interruption) can leave
+# scratch rows and files behind; clear them before creating new ones.
+for _row in db.list_projects(include_archived=True):
+    if _row["name"] == "zz-review-scratch":
+        delete_project(_row["id"])
+
+
 # --- B4: _resize center-crops, never stretches -------------------------------
 # 200x100 source: green, with a red band 10px from the left edge. Cropping the
 # centre to 100x100 (x 50..150) must drop the band; a stretch would keep it.
