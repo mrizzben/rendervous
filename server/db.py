@@ -187,18 +187,25 @@ def set_project_archived(project_id: int, archived: bool) -> bool:
 
 
 def delete_project(project_id: int):
-    """Delete a project (cascades to designs/vizes/revisions). Returns the
-    deleted row, or None if missing. Design image files are NOT removed here
-    — main.py collects them first and unlinks them after the commit."""
+    """Delete a project (cascades to designs/vizes/revisions). Returns every
+    image path it owned — reference *and* revision renders — so the caller can
+    unlink them; the files themselves are NOT removed here."""
     with _lock:
-        row = (
+        rows = (
             conn()
-            .execute("SELECT image_path FROM designs WHERE project_id=?", (project_id,))
+            .execute(
+                "SELECT image_path FROM designs WHERE project_id=?"
+                " UNION"
+                " SELECT r.image_path FROM revisions r"
+                "  JOIN visualizations v ON v.id=r.visualization_id"
+                "  JOIN designs d ON d.id=v.design_id WHERE d.project_id=?",
+                (project_id, project_id),
+            )
             .fetchall()
         )
         conn().execute("DELETE FROM projects WHERE id=?", (project_id,))
         conn().commit()
-        return row
+        return rows
 
 
 # ----------------------------------------------------------------- designs
@@ -295,7 +302,7 @@ def list_visualizations(design_id: int):
         )
 
 
-def set_current_revision(viz_id: int, revision_id: int):
+def set_current_revision(viz_id: int, revision_id: int | None):
     with _lock:
         conn().execute(
             "UPDATE visualizations SET current_revision_id=? WHERE id=?",
@@ -433,6 +440,25 @@ def set_job_failed(job_id: int, error: str):
             (error, job_id),
         )
         conn().commit()
+
+
+def recover_stale_jobs() -> int:
+    """Startup: the job queue lives in memory, so queued/running rows from a
+    previous process can never finish. Fail them loudly instead of leaving
+    zombie rows the UI polls forever. Returns how many rows were failed.
+
+    ponytail: queued jobs are failed, not requeued — their api_key only ever
+    lived in the dead process. Requeue is possible only when the env key is
+    set; add that if losing queued work on restart ever matters.
+    """
+    with _lock:
+        cur = conn().execute(
+            "UPDATE jobs SET status='failed',"
+            " error='server restarted mid-job', completed_at=datetime('now')"
+            " WHERE status IN ('queued','running')"
+        )
+        conn().commit()
+        return cur.rowcount
 
 
 def new_image_path(ext: str = "png"):
