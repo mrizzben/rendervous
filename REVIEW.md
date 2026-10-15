@@ -264,3 +264,46 @@ The uncommitted geometry lock that was in the working tree when this review
 ran is now committed alongside the B-series server fixes (main.py imports it,
 so it had to land together), with the reasoning recorded in that commit.
 
+---
+
+## Post-implementation review (review of the changes above)
+
+Each fix was re-diffed against its How-sketch and probed empirically.
+
+| Item | Verdict | Evidence |
+| --- | --- | --- |
+| B1 | matches the sketch exactly (UNION in `db.py`, `main.py` unchanged) | full diff re-read; `test_lifecycle` asserts the render file is gone | 
+| B2 | matches; one extra line (basename the path before unlink, like `delete_design`) | diff; test asserts repoint, then NULL when the last revision goes | 
+| B3 | one deviation from the sketch: queued jobs are **failed**, not requeued — their `api_key` only lived in the dead process (only a server-wide env `OPENROUTER_API_KEY` could requeue them). Rationale + upgrade path recorded in the docstring's ponytail comment | worker try-wrap in diff; B3 check asserts `status='failed'`, `error` mentions restart | 
+| B4 | matches (`ImageOps.fit`, format/size short-circuit preserved) | red-band 200x100 → 100x100 test proves crop, not stretch | 
+| B5 | matches; run-under-`-m` main block iterates every `test_*` symbol | 29 checks pass | 
+| B6 | matches; `App.runRender` needs no change because the deadline has a default | `tsc --noEmit` exit 0 | 
+| B7 | matches (cap, byte-verify, true extension); re-encode skipped as the doc allowed and extra bomb hardening added (below) | upload check: garbage 400, bomb 400, oversize 413, `.dat` stores as `.png` | 
+| I1 | matches; a side-check asserts the job *row* still carries the reference (only the API responses strip it) so the worker keeps working | `data:` absent from `get_job`/`project_tree` JSON, present in the row, revision params stripped | 
+| I2 / I3 | no action, as argued in their sections | — |
+
+Issue found **and fixed** during this review:
+
+- `_read_upload` (B7's new code) did not catch `PIL.Image.DecompressionBombError`:
+  a ~70-byte PNG whose IHDR declares 40000x40000 (1.6B px > Pillow's 178.9M
+  limit, Pillow 12.3) escaped as an unhandled exception → HTTP 500. Probed
+  empirically, then fixed to 400 ("Image is too large to process") with a
+  crafted-bomb case in `server/test_lifecycle.py`.
+
+Observations (no action taken, all cosmetic or environment-specific):
+
+- `test_lifecycle`'s B2 block leaves its scratch rows to the *next* block's
+  `delete_project(pid)` (they share `pid`). Works while blocks run in order,
+  but a run that crashes mid-block leaks scratch rows — observed in practice
+  when the (then-failing) bomb case aborted the run. Fixed to self-heal: the
+  check now deletes any pre-existing `zz-review-scratch` projects at the top,
+  so a crashed run no longer leaves residue behind for later runs.
+- The worker's new try-wrap and the `params.pop("image_url")` are verified by
+  inspection, not at runtime: the worker loop is long-lived and not directly
+  callable in a check without a live OpenRouter key. End-to-end coverage would
+  require a stubbed `or_.generate`.
+- Dev-hazard to know about: `server/test_lifecycle.py` (and any import of
+  `server.main`) runs `recover_stale_jobs()`, which fails any `queued`/`running`
+  rows in the shared dev DB — including those of a concurrently running dev
+  server. Recorded here so nobody is surprised.
+
