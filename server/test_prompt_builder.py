@@ -1,6 +1,6 @@
 """Lamp temperature applies only for night/sunset lighting (UI.md)."""
 
-from prompt_builder import _SKY_SENTENCES, build_prompt
+from server.prompt_builder import _SKY_SENTENCES, build_prompt
 
 _BASE = {
     "fidelity": 90,
@@ -195,3 +195,16 @@ def test_blue_skies_suppressed_for_overcast_lighting():
     assert "Sky:" not in p
     p = build_prompt({**_BASE, "lighting": "overcast", "sky": "overcast_dramatic"})
     assert "dramatic layered overcast clouds" in p
+
+
+if __name__ == "__main__":
+    # Runnable without pytest, like the sibling server/test_*.py modules:
+    #   .venv/bin/python -m server.test_prompt_builder
+    checks = [
+        v
+        for k, v in sorted(globals().items())
+        if k.startswith("test_") and callable(v)
+    ]
+    for check in checks:
+        check()
+    print(f"prompt_builder ok ({len(checks)} checks)")
