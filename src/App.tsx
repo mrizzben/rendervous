@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import type {
   Design,
+  EditSpec,
   ModelInfo,
   ProjectSummary,
   Revision,
@@ -19,6 +20,7 @@ import {
   getModels,
   getProject,
   hasUserKey,
+  imageUrlToDataUrl,
   listProjects,
   measureImage,
   pollUntil,
@@ -27,6 +29,7 @@ import {
   setDesignArchived,
   setProjectArchived,
   shortModel,
+  saveEdit,
   uploadDesign,
 } from "./api";
 import CanvasStage from "./components/CanvasStage";
@@ -36,9 +39,17 @@ import Header from "./components/Header";
 import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
-import { DEFAULT_SETTINGS } from "./options";
+import EditPanel from "./components/EditPanel";
+import { bakeEdit, DEFAULT_OPS, type EditOps } from "./lib/imageEdit";
+import PromptPanel from "./components/PromptPanel";
+import {
+  DEFAULT_SETTINGS,
+  loadPresets,
+  savePresets,
+  type Preset,
+} from "./options";
 
-const RECOMMENDED_ID = "bytedance-seed/seedream-5-0-pro";
+const RECOMMENDED_ID = "google/gemini-3.1-flash-image";
 
 export default function App() {
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -59,6 +70,20 @@ export default function App() {
   const [designRatio, setDesignRatio] = useState<AspectRatio | "auto" | null>(
     null,
   );
+  const [stageTab, setStageTab] = useState<"render" | "edit">("render");
+  const [editOps, setEditOps] = useState<EditOps>(DEFAULT_OPS);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [regionTool, setRegionTool] = useState(false); // AI region-select tool
+  const [shapeTool, setShapeTool] = useState<"rect" | "lasso" | "pen" | "poly">("rect");
+  // chips directly toggle the tool: click active chip again → tool off
+  const setRegionShapeTool = (k: "rect" | "lasso" | "pen" | "poly") => {
+    if (regionTool && shapeTool === k) setRegionTool(false);
+    else {
+      setShapeTool(k);
+      setRegionTool(true);
+    }
+  };
+  const [presets, setPresets] = useState<Preset[]>(() => loadPresets());
 
   const model = useMemo(
     () => models.find((m) => m.id === modelId) ?? null,
@@ -200,8 +225,41 @@ export default function App() {
     }
   };
 
+  // Edit tab: region edit of the current render → new minor revision
+  const runEdit = async (edit: EditSpec) => {
+    if (busy || !model || !activeDesign || !activeViz || !currentRev?.image_url)
+    return;
+    setBanner("");
+    setBusy(true);
+    try {
+      // the edit source is the CURRENT RENDER, fed back as the img2img input
+      const image_url = await imageUrlToDataUrl(currentRev.image_url);
+      const { job_id } = await generate({
+        model: model.id,
+        image_url,
+        edit,
+        design_id: activeDesign.id,
+        visualization_id: activeViz.id,
+        parent_revision_id: currentRev.id,
+      });
+      const out = await pollUntil(
+        () => getJob(job_id),
+        (j) => j.status === "done" || j.status === "failed",
+        2000,
+      );
+      if (out.status === "failed") {
+        setBanner(out.error || "Edit failed.");
+      }
+      await reload();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSetCurrent = async (id: number) => {
-    if (busy || id === currentId) return;
+    if (id === currentId) return;
     try {
       await restoreRevision(id);
       await reload();
@@ -310,6 +368,32 @@ export default function App() {
     }
   };
 
+  // ---- user presets (model + visualization config + additional prompt) -----
+
+  const handleSavePreset = () => {
+    const name = window.prompt("Name the preset", "My Preset");
+    if (name === null) return; // cancelled
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const preset: Preset = { name: trimmed, modelId, settings };
+    const next = presets.some((p) => p.name === trimmed)
+      ? presets.map((p) => (p.name === trimmed ? preset : p))
+      : [...presets, preset];
+    savePresets(next);
+    setPresets(next);
+  };
+
+  const handleApplyPreset = (p: Preset) => {
+    setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
+    if (models.some((m) => m.id === p.modelId)) setModelId(p.modelId);
+  };
+
+  const handleDeletePreset = (name: string) => {
+    const next = presets.filter((p) => p.name !== name);
+    savePresets(next);
+    setPresets(next);
+  };
+
   const toggleCompare = (id: number) => {
     setCompareIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -325,6 +409,27 @@ export default function App() {
     return a && b ? [a, b] : null;
   };
   const compare = pair();
+
+  // Edit tab: reset the tool state when the source revision changes
+  useEffect(() => {
+    setEditOps(DEFAULT_OPS);
+    setShowOriginal(false);
+  }, [currentRev?.id]);
+
+  // Edit tab: model-free tools bake client-side, server stores the result
+  const handleApplyEdit = async () => {
+    if (busy || !activeViz || !currentRev?.image_url) return;
+    setBusy(true);
+    try {
+      const blob = await bakeEdit(currentRev.image_url, editOps);
+      await saveEdit(activeViz.id, currentRev.id, blob, editOps);
+      await reload();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // re-render the app (so shownBanner re-evaluates) whenever the header key changes
   const [, bumpKeyTick] = useReducer((x: number) => x + 1, 0);
@@ -364,6 +469,7 @@ export default function App() {
         />
 
         <div className="stage-col">
+          <div className="stage-area">
           <CanvasStage
             projectId={projectId}
             referenceUrl={activeDesign?.image_url ?? null}
@@ -374,6 +480,14 @@ export default function App() {
                 ? `${currentRev.label} · ${shortModel(currentRev.model ?? "model")}`
                 : null
             }
+            tab={stageTab}
+            onTab={setStageTab}
+            busy={busy}
+            editOps={editOps}
+            showOriginal={showOriginal}
+            regionTool={regionTool}
+            shapeTool={shapeTool}
+            onEditApply={runEdit}
             onUpload={handleUpload}
             onCreateProject={() => {
               const name = window.prompt(
@@ -384,6 +498,15 @@ export default function App() {
               handleNewProject(name.trim() || "Untitled Project");
             }}
           />
+          {activeDesign && stageTab === "render" && (
+            <PromptPanel
+              value={settings.custom_instruction ?? ""}
+              onChange={(v) =>
+                setSettings({ ...settings, custom_instruction: v })
+              }
+            />
+          )}
+          </div>
           <Filmstrip
             revisions={revisions}
             currentId={currentId}
@@ -396,15 +519,35 @@ export default function App() {
           />
         </div>
 
-        <VisualizePanel
-          settings={settings}
-          onChange={setSettings}
-          busy={busy}
-          disabled={!activeDesign}
-          engineName={model ? shortModel(model.id) : "…"}
-          onRender={() => runRender()}
-          elapsed={elapsed}
-        />
+        <div className={stageTab === "edit" ? "pane-hidden" : ""}>
+          <VisualizePanel
+            settings={settings}
+            onChange={setSettings}
+            busy={busy}
+            disabled={!activeDesign}
+            engineName={model ? shortModel(model.id) : "…"}
+            onRender={() => runRender()}
+            elapsed={elapsed}
+            presets={presets}
+            onSavePreset={handleSavePreset}
+            onApplyPreset={handleApplyPreset}
+            onDeletePreset={handleDeletePreset}
+          />
+        </div>
+        <div className={stageTab === "edit" ? "" : "pane-hidden"}>
+          <EditPanel
+            ops={editOps}
+            disabled={!currentRev}
+            busy={busy}
+            regionTool={regionTool}
+            shapeTool={shapeTool}
+            onChange={(patch) => setEditOps({ ...editOps, ...patch })}
+            onReset={() => setEditOps(DEFAULT_OPS)}
+            onHoldOriginal={setShowOriginal}
+            onShapeTool={setRegionShapeTool}
+            onApply={handleApplyEdit}
+          />
+        </div>
       </div>
 
       {compare && (

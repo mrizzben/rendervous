@@ -1,6 +1,6 @@
 """Lamp temperature applies only for night/sunset lighting (UI.md)."""
 
-from prompt_builder import build_prompt
+from server.prompt_builder import _SKY_SENTENCES, build_prompt
 
 _BASE = {
     "fidelity": 90,
@@ -77,3 +77,134 @@ def test_strict_fidelity_occlusion_guardrails():
     assert "never remove or modify structure to reveal environment" in p
     assert "remain occluded behind the architecture" in p
     assert "strictly outside the building footprint" in p
+
+
+# --- P1 feature branches: add tests ONLY below your own marker -------------
+
+
+# >>> tests: season-weather (season_/weather_ tests here) <<<
+
+
+def test_season_appended_to_environment():
+    p = build_prompt({**_BASE, "season": "winter"})
+    assert "bare deciduous branches" in p
+
+
+def test_weather_appended():
+    p = build_prompt({**_BASE, "weather": "fog"})
+    assert "haze increasing with distance" in p
+
+
+def test_season_and_weather_combined():
+    p = build_prompt({**_BASE, "season": "autumn", "weather": "rain"})
+    assert "autumn foliage" in p
+    assert "wet reflective ground surfaces" in p
+
+
+def test_season_weather_absent_by_default():
+    p = build_prompt(dict(_BASE))
+    assert "Season:" not in p
+    assert "Weather:" not in p
+
+
+# >>> tests: material-finish (finish_ tests here) <<<
+
+
+def test_finish_appended_to_materials():
+    p = build_prompt({**_BASE, "finish": "weathered"})
+    assert "visible patina" in p
+
+
+def test_finish_absent_by_default():
+    p = build_prompt(_BASE)
+    assert "Material finish:" not in p
+
+
+# >>> tests: sky-type (sky_ tests here) <<<
+
+
+def test_sky_appended_to_lighting():
+    p = build_prompt({**_BASE, "sky": "scattered_clouds"})
+    assert "scattered white cumulus clouds" in p
+
+
+def test_sky_absent_by_default():
+    assert "Sky:" not in build_prompt({**_BASE})
+
+
+# >>> tests: grade-intensity (grade_ tests here) <<<
+
+
+def test_grade_intensity_tiers():
+    p20 = build_prompt({**_BASE, "grade_intensity": 20})
+    assert "subtle and restrained" in p20
+    assert "moderately intensified" in build_prompt({**_BASE, "grade_intensity": 50})
+    assert "strongly cinematic" in build_prompt({**_BASE, "grade_intensity": 90})
+
+
+def test_grade_intensity_out_of_range_ignored():
+    for g in (150, -5):
+        p = build_prompt({**_BASE, "grade_intensity": g})
+        assert "grade intensity" not in p, g
+
+
+# >>> tests: saturation (saturation_ tests here) <<<
+
+
+def test_saturation_tiers():
+    low = build_prompt({**_BASE, "saturation": 5})
+    mid = build_prompt({**_BASE, "saturation": 50})
+    high = build_prompt({**_BASE, "saturation": 95})
+    assert "almost fully desaturated" in low
+    assert "natural and true to life" in mid
+    assert "hyper-saturated" in high
+
+
+def test_saturation_out_of_range_ignored():
+    for v in (120, -10):
+        p = build_prompt({**_BASE, "saturation": v})
+        assert "saturation" not in p, v
+
+
+def test_saturation_absent_by_default():
+    p = build_prompt({**_BASE})
+    assert "saturation" not in p
+
+
+# --- Anti-hallucination guardrails -----------------------------------------
+
+
+def test_settings_scope_guardrail_present():
+    p = build_prompt({**_BASE, "season": "winter", "finish": "weathered"})
+    assert "the reference model wins" in p
+    assert "never license changes to the building" in p
+
+
+def test_camera_two_point_perspective():
+    assert "perfectly vertical and parallel" in build_prompt(_BASE)
+
+
+def test_sky_suppressed_for_night_lighting():
+    for sky in _SKY_SENTENCES:
+        p = build_prompt({**_BASE, "lighting": "night", "sky": sky})
+        assert "Sky:" not in p, sky
+
+
+def test_blue_skies_suppressed_for_overcast_lighting():
+    p = build_prompt({**_BASE, "lighting": "overcast", "sky": "clear_blue"})
+    assert "Sky:" not in p
+    p = build_prompt({**_BASE, "lighting": "overcast", "sky": "overcast_dramatic"})
+    assert "dramatic layered overcast clouds" in p
+
+
+if __name__ == "__main__":
+    # Runnable without pytest, like the sibling server/test_*.py modules:
+    #   .venv/bin/python -m server.test_prompt_builder
+    checks = [
+        v
+        for k, v in sorted(globals().items())
+        if k.startswith("test_") and callable(v)
+    ]
+    for check in checks:
+        check()
+    print(f"prompt_builder ok ({len(checks)} checks)")

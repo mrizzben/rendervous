@@ -122,6 +122,169 @@ def _advanced_photography(s):
     return f"\nShot on a {' at '.join(parts) if len(parts) == 2 else parts[0]}."
 
 
+def _season_weather(s):
+    """Season + weather sentences for the ENVIRONMENT section.
+
+    (feature: season-weather) Reads s.get("season") and s.get("weather");
+    unset/None means auto — the environment preset wording stands alone.
+    """
+    seasons = {
+        "summer": ("Season: midsummer, with dense green foliage and full leafy trees."),
+        "autumn": (
+            "Season: autumn, with orange and red autumn foliage and some "
+            "fallen leaves on the ground."
+        ),
+        "winter": (
+            "Season: winter, with bare deciduous branches and snow covering "
+            "horizontal surfaces, cold muted palette."
+        ),
+        "spring": (
+            "Season: spring, with fresh light-green foliage and blooming trees."
+        ),
+    }
+    weathers = {
+        "clear": "Weather: clear, with no precipitation.",
+        "overcast": (
+            "Weather: overcast, with a fully cloud-covered sky and soft even light."
+        ),
+        "fog": ("Weather: light fog, with atmospheric haze increasing with distance."),
+        "rain": (
+            "Weather: light rain, with wet reflective ground surfaces and "
+            "overcast light."
+        ),
+        "snow": (
+            "Weather: snowfall, with falling snowflakes and snow "
+            "accumulating on horizontal surfaces."
+        ),
+    }
+    lines = []
+    season = seasons.get(s.get("season"))
+    if season:
+        lines.append(season)
+    weather = weathers.get(s.get("weather"))
+    if weather:
+        lines.append(weather)
+    return "\n" + "\n".join(lines) if lines else ""
+
+
+_FINISHES = {
+    "matte": (
+        "Material finish: matte, non-reflective surfaces with a soft diffuse response."
+    ),
+    "polished": (
+        "Material finish: polished, refined surfaces with crisp realistic reflections."
+    ),
+    "weathered": (
+        "Material finish: weathered, aged surfaces with visible patina, "
+        "fading and staining."
+    ),
+}
+
+
+def _material_finish(s):
+    """Material finish sentence for the MATERIALS section.
+
+    (feature: material-finish)
+    Reads s.get("finish"): matte | polished | weathered; None = auto — the
+    material preset wording stands alone.
+    """
+    finish = _FINISHES.get(s.get("finish"))
+    return "\n" + finish if finish else ""
+
+
+_SKY_SENTENCES = {
+    "clear_blue": ("Sky: clear deep blue with excellent long-distance visibility."),
+    "scattered_clouds": (
+        "Sky: bright blue with scattered white cumulus clouds, sunlight "
+        "broken by passing clouds."
+    ),
+    "overcast_dramatic": (
+        "Sky: dramatic layered overcast clouds with strong contrast between "
+        "bright sky and dark cloud bases, moody diffused light."
+    ),
+    "hazy": (
+        "Sky: pale and hazy, with soft light diffusing through atmospheric "
+        "haze near the horizon."
+    ),
+}
+
+# Sky options that directly contradict a lighting preset's own sky wording,
+# per lighting preset id. Night owns the sky entirely (deep blue twilight /
+# moonlight); overcast conflicts with blue-sky options.
+# ponytail: no full contradiction matrix across all settings — only the
+# deterministic lighting-vs-sky conflicts above are suppressed; extend this
+# dict if users report more.
+_SKY_CONFLICTS = {
+    "night": frozenset(_SKY_SENTENCES),
+    "overcast": frozenset(("clear_blue", "scattered_clouds")),
+}
+
+
+def _sky_type(s):
+    """Sky sentence for the LIGHTING section (the sky drives the light).
+
+    (feature: sky-type) Reads s.get("sky"); None = auto — the lighting
+    preset's sky wording stands alone. Skies that directly contradict the
+    lighting preset's own sky are suppressed (see _SKY_CONFLICTS): a
+    contradictory instruction is a hallucination trigger, and the house
+    pattern already gates settings by lighting (see _SUN_LIGHTINGS,
+    lamp_temp).
+    """
+    sky = s.get("sky")
+    sentence = _SKY_SENTENCES.get(sky)
+    if not sentence or sky in _SKY_CONFLICTS.get(s["lighting"], ()):
+        return ""
+    return "\n" + sentence
+
+
+_GRADE_TONES = [
+    (34, "subtle and restrained, with natural contrast and gentle tonal response"),
+    (67, "moderately intensified, with deeper contrast and richer tones"),
+    (
+        101,
+        "strongly cinematic, with deep contrast, rich compressed shadows and "
+        "dramatic tonal curve",
+    ),
+]
+
+
+def _grade_intensity(s):
+    """Grade intensity sentence for the PHOTOGRAPHY section.
+
+    (feature: grade-intensity) Reads s.get("grade_intensity"): 0-100;
+    None = auto (the style preset's grade wording stands alone).
+    """
+    g = s.get("grade_intensity")
+    if not isinstance(g, (int, float)) or not 0 <= g <= 100:
+        return ""
+    for upper, tone in _GRADE_TONES:
+        if g < upper:
+            return f"\nColor grade intensity: {tone}."
+    return ""
+
+
+def _saturation(s):
+    """Color saturation sentence for the PHOTOGRAPHY section.
+
+    Reads s.get("saturation"): 0-100 (50 = natural); None = auto, i.e. the
+    style preset's color wording stands alone.
+    """
+    v = s.get("saturation")
+    if not isinstance(v, (int, float)) or not 0 <= v <= 100:
+        return ""
+    if v < 15:
+        tone = "nearly monochrome, almost fully desaturated"
+    elif v < 40:
+        tone = "desaturated and muted, understated colors"
+    elif v <= 65:
+        tone = "natural and true to life"
+    elif v <= 85:
+        tone = "rich and vivid, with intensified color"
+    else:
+        tone = "hyper-saturated, with bold intensified color"
+    return f"\nColor saturation: {tone}."
+
+
 def build_prompt(settings):
     """settings: {fidelity, lighting, material, environment, custom_instruction,
     negative_prompt} -> assembled prompt string."""
@@ -131,6 +294,7 @@ def build_prompt(settings):
 
     lighting = _section("lighting_presets", "lighting_base", s["lighting"])
     lighting += _advanced_lighting(s)
+    lighting += _sky_type(s)
     # Lamp temperature only applies when artificial light sources dominate
     # the scene (night, sunset) — ignored for every other lighting preset.
     kelvin = s.get("lamp_temp")
@@ -160,13 +324,18 @@ def build_prompt(settings):
     return cfg["template"].format(
         geometry=cfg["sections"]["geometry"],
         camera=cfg["sections"]["camera"],
-        materials=_section("materials_presets", "materials_base", s["material"]),
+        materials=_section("materials_presets", "materials_base", s["material"])
+        + _material_finish(s),
         lighting=lighting,
         environment=_section(
             "environment_presets", "environment_base", s["environment"]
-        ),
+        )
+        + _season_weather(s),
         style=_section("style_presets", "photography", s["style"])
-        + _advanced_photography(s),
+        + _advanced_photography(s)
+        + _grade_intensity(s)
+        + _saturation(s),
+        settings_scope=cfg["sections"]["settings_scope"],
         restriction=cfg["fidelity"][fidelity_level(s["fidelity"])],
         extra="\n\n".join(extras),
     )

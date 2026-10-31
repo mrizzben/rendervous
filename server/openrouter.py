@@ -15,11 +15,12 @@ import base64
 import json
 import math
 import os
+import re
 
 import requests
 
 API_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "bytedance-seed/seedream-5-0-pro"
+DEFAULT_MODEL = "google/gemini-3.1-flash-image"
 RECOMMENDED = {
     "bytedance-seed/seedream-5-0-pro",
     "google/gemini-2.5-flash-image",
@@ -35,24 +36,20 @@ class OpenRouterError(Exception):
 # Aspect ratios the OpenRouter images endpoint accepts (first wins ties).
 ASPECT_RATIOS = (
     "1:1",
-    "1:2",
-    "1:4",
-    "1:8",
-    "2:1",
-    "2:3",
-    "3:2",
-    "3:4",
-    "4:1",
+    "16:9",
+    "9:16",
     "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
     "4:5",
     "5:4",
+    "1:2",
+    "2:1",
+    "1:4",
+    "4:1",
+    "1:8",
     "8:1",
-    "9:16",
-    "16:9",
-    "9:19.5",
-    "19.5:9",
-    "9:20",
-    "20:9",
     "9:21",
     "21:9",
 )
@@ -70,13 +67,44 @@ def _ratio_value(r):
 def closest_aspect_ratio(width, height):
     """Nearest supported ratio to width/height by log-distance.
 
-    Log-distance keeps 1:2 and 2:1 equal-and-opposite from 1:1. Ties go to
+    Log-distance keeps 9:16 and 16:9 equal-and-opposite from 1:1. Ties go to
     the earliest entry. Used to derive the output ratio from the reference
     image server-side so the API param is always set, not left to a prompt
     hint the model may ignore.
     """
-    v = math.log(width / height)
-    return min(ASPECT_RATIOS, key=lambda r: abs(v - _ratio_value(r)))
+    return closest_ratio_to(f"{width}:{height}", ASPECT_RATIOS)
+
+
+def closest_ratio_to(target, ratios):
+    """Nearest ratio to `target` ("w:h") from `ratios` by log-distance.
+
+    Ties go to the earliest entry of `ratios`.
+    """
+    return min(ratios, key=lambda r: abs(_ratio_value(target) - _ratio_value(r)))
+
+
+def _accepted_ratios(error_message):
+    """Parse provider-rejected-parameter error messages like
+
+    "No provider for X supports ... aspect_ratio: not supported. Accepted:
+    1:1, 16:9, ... | Google: aspect_ratio: not supported. Accepted: ..."
+
+    Returns the intersection of every "Accepted:" list in the message (a
+    retry must satisfy all rejecting providers), or [] when the message
+    doesn't match the pattern. Falls back to the first list if the
+    intersection is empty (providers disagreeing is better than nothing).
+    """
+    lists = []
+    for chunk in re.findall(r"Accepted:\s*([\d.,:\s]+)", error_message):
+        ratios = re.findall(r"\d+(?:\.\d+)?:\d+(?:\.\d+)?", chunk)
+        if ratios:
+            lists.append(ratios)
+    if not lists:
+        return []
+    common = set(lists[0]).intersection(*lists[1:])
+    if common:
+        return [r for r in lists[0] if r in common]
+    return lists[0]
 
 
 def resolve_key(api_key):
@@ -167,7 +195,30 @@ def generate(
     if seed_i is not None and seed_i != -1:
         body["seed"] = seed_i
 
-    resp = requests.post(
+    resp = _post_images(key, body)
+    if resp.status_code == 400 and body.get("aspect_ratio"):
+        # Providers reject out-of-subset ratios with a 400 listing what they
+        # accept. Snap to the nearest accepted ratio and retry once.
+        accepted = _accepted_ratios(_error_detail(resp))
+        if accepted and body["aspect_ratio"] not in accepted:
+            body["aspect_ratio"] = closest_ratio_to(body["aspect_ratio"], accepted)
+            resp = _post_images(key, body)
+    if resp.status_code != 200:
+        raise OpenRouterError(
+            f"OpenRouter error {resp.status_code}: {_error_detail(resp)}"
+        )
+
+    data = resp.json()
+    try:
+        b64 = data["data"][0]["b64_json"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise OpenRouterError(f"Unexpected OpenRouter response: {e}") from e
+    return base64.b64decode(b64)
+
+
+def _post_images(key, body):
+    """POST one image-generation request; returns the raw response."""
+    return requests.post(
         f"{API_URL}/images",
         headers={
             "Authorization": f"Bearer {key}",
@@ -176,17 +227,11 @@ def generate(
         json=body,
         timeout=300,
     )
-    if resp.status_code != 200:
-        detail = ""
-        try:
-            detail = resp.json().get("error", {}).get("message", resp.text[:400])
-        except Exception:
-            detail = resp.text[:400]
-        raise OpenRouterError(f"OpenRouter error {resp.status_code}: {detail}")
 
-    data = resp.json()
+
+def _error_detail(resp):
+    """Best-effort human-readable error message from a non-200 response."""
     try:
-        b64 = data["data"][0]["b64_json"]
-    except (KeyError, IndexError, TypeError) as e:
-        raise OpenRouterError(f"Unexpected OpenRouter response: {e}") from e
-    return base64.b64decode(b64)
+        return resp.json().get("error", {}).get("message", resp.text[:400])
+    except Exception:
+        return resp.text[:400]

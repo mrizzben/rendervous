@@ -93,7 +93,28 @@ export interface Settings {
   sun_elevation?: number; // degrees above horizon, 0–90
   focal_length?: number; // mm
   f_stop?: number;
+  // --- P1 features (each branch fills ONLY its own marker line) ---
+  season?: "summer" | "autumn" | "winter" | "spring";
+  weather?: "clear" | "overcast" | "fog" | "rain" | "snow";
+  finish?: "matte" | "polished" | "weathered";
+  sky?: "clear_blue" | "scattered_clouds" | "overcast_dramatic" | "hazy";
+  grade_intensity?: number; // 0-100, higher = more cinematic
+  saturation?: number; // 0-100, 50 = natural
   custom_instruction?: string;
+}
+
+export interface EditSpec {
+  /** Selection bbox in natural image px (actual rect for kind="rect"). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  instruction: string;
+  kind: "rect" | "lasso" | "pen";
+  /** lasso polygon / pen polyline, flat [x1,y1, x2,y2, …] natural px */
+  points?: number[];
+  /** pen tip in natural px */
+  width?: number;
 }
 
 export interface GenerationRequest {
@@ -112,6 +133,7 @@ export interface GenerationRequest {
   design_id?: number;
   visualization_id?: number;
   parent_revision_id?: number;
+  edit?: EditSpec | null; // region edit of a rendered image
   settings?: Settings;
 }
 
@@ -195,6 +217,43 @@ export function generate(req: GenerationRequest): Promise<{ job_id: number }> {
     method: "POST",
     body: JSON.stringify(req),
   });
+}
+
+/** Fetch a /images URL and convert it to a base64 data URL (same-origin).
+ *  Used to feed a rendered revision back into img2img for region edits. */
+export function imageUrlToDataUrl(url: string): Promise<string> {
+  return fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`could not load image (${r.status})`);
+    return r.blob();
+  }).then(
+    (blob) =>
+      new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = () => reject(new Error("could not read image"));
+        fr.readAsDataURL(blob);
+      }),
+  );
+}
+
+/** Persist a model-free (client-baked) edit as a minor revision. */
+export function saveEdit(
+  visualizationId: number,
+  parentRevisionId: number,
+  blob: Blob,
+  meta: unknown,
+): Promise<{ ok: true; id: number; label: string }> {
+  const fd = new FormData();
+  fd.append("visualization_id", String(visualizationId));
+  fd.append("parent_revision_id", String(parentRevisionId));
+  fd.append("meta", JSON.stringify(meta));
+  fd.append("file", blob, "edit.png");
+  return fetch("/api/edits", { method: "POST", body: fd, headers: authHeaders() }).then(
+    async (r) => {
+      if (!r.ok) await parseError(r);
+      return r.json() as Promise<{ ok: true; id: number; label: string }>;
+    },
+  );
 }
 
 export function getJob(id: number): Promise<Job> {
@@ -295,26 +354,24 @@ export function deleteRevision(id: number): Promise<unknown> {
 // --- aspect ratio detection ------------------------------------------------
 
 /** Supported output aspect ratios, in preference order (first wins ties). */
+// Aspect ratios accepted by the OpenRouter Image API (normalized enum, see
+// https://openrouter.ai/docs/guides/overview/multimodal/image-generation).
 export const ASPECT_RATIOS = [
   "1:1",
-  "1:2",
-  "1:4",
-  "1:8",
-  "2:1",
-  "2:3",
-  "3:2",
-  "3:4",
-  "4:1",
+  "16:9",
+  "9:16",
   "4:3",
+  "3:4",
+  "3:2",
+  "2:3",
   "4:5",
   "5:4",
+  "1:2",
+  "2:1",
+  "1:4",
+  "4:1",
+  "1:8",
   "8:1",
-  "9:16",
-  "16:9",
-  "9:19.5",
-  "19.5:9",
-  "9:20",
-  "20:9",
   "9:21",
   "21:9",
 ] as const;
@@ -322,7 +379,7 @@ export const ASPECT_RATIOS = [
 export type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
 /** Snap an image's dimensions to the nearest supported ratio.
- *  Compares log-ratios so 1:2 and 2:1 sit equal-and-opposite (a 2x-tall
+ *  Compares log-ratios so 9:16 and 16:9 sit equal-and-opposite (a 2x-tall
  *  image is as "far" from 1:1 as a 2x-wide one). Ties: earliest in list.
  *  When `tol` is given and the nearest ratio is farther than `tol` (log
  *  distance), returns "auto" instead — degenerate inputs get a free-form
@@ -388,11 +445,19 @@ export async function pollUntil<T>(
   fn: () => Promise<T>,
   isDone: (v: T) => boolean,
   intervalMs = 2000,
+  timeoutMs = 900_000,
 ): Promise<T> {
+  // A job that never reaches a terminal state (worker died, server restarted
+  // mid-render) must not spin the Render button forever.
+  const t0 = Date.now();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const v = await wait(0).then(fn);
     if (isDone(v)) return v;
+    if (Date.now() - t0 > timeoutMs)
+      throw new Error(
+        "Render timed out — the job may still finish; check the filmstrip later.",
+      );
     await wait(intervalMs);
   }
 }

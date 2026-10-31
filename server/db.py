@@ -13,11 +13,33 @@ file (server/models_catalog.json), not DB state.
 
 import os
 import sqlite3
+import sys
 import threading
 import uuid
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+
+
+def _data_dir() -> str:
+    """Where the SQLite DB and images live.
+
+    Repo/Docker: ./data next to the code. Frozen desktop build: the install
+    dir is read-only (Program Files, macOS .app), so use the per-user dir.
+    """
+    override = os.environ.get("RENDERVOUS_DATA")
+    if override:
+        return override
+    if getattr(sys, "frozen", False):
+        if os.name == "nt":
+            base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+            return os.path.join(base, "Rendervous")
+        return os.path.join(
+            os.path.expanduser("~"), "Library", "Application Support", "Rendervous"
+        )
+    return os.path.join(BASE_DIR, "data")
+
+
+DATA_DIR = _data_dir()
 IMAGES_DIR = os.path.join(DATA_DIR, "images")
 DB_PATH = os.path.join(DATA_DIR, "rendervous.db")
 
@@ -71,17 +93,33 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   completed_at TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_designs_project ON designs(project_id);
+CREATE INDEX IF NOT EXISTS idx_visualizations_design ON visualizations(design_id);
+CREATE INDEX IF NOT EXISTS idx_revisions_viz ON revisions(visualization_id);
+CREATE INDEX IF NOT EXISTS idx_revisions_parent ON revisions(parent_revision_id);
 """
+
+
+def _columns(table: str) -> set[str]:
+    """Column names of `table`, bound as a parameter (no SQL interpolation)."""
+    return {
+        r["name"]
+        for r in conn().execute(
+            "SELECT name FROM pragma_table_info(?)", (table,)
+        )
+    }
 
 
 def _migrate() -> None:
     """Add columns introduced after the first schema (existing data/ DBs)."""
-    for table in ("projects", "designs"):
-        cols = {r["name"] for r in conn().execute(f"PRAGMA table_info({table})")}
-        if "archived" not in cols:
-            conn().execute(
-                f"ALTER TABLE {table} ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
-            )
+    if "archived" not in _columns("projects"):
+        conn().execute(
+            "ALTER TABLE projects ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+        )
+    if "archived" not in _columns("designs"):
+        conn().execute(
+            "ALTER TABLE designs ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+        )
     conn().commit()
 
 
@@ -183,18 +221,25 @@ def set_project_archived(project_id: int, archived: bool) -> bool:
 
 
 def delete_project(project_id: int):
-    """Delete a project (cascades to designs/vizes/revisions). Returns the
-    deleted row, or None if missing. Design image files are NOT removed here
-    — main.py collects them first and unlinks them after the commit."""
+    """Delete a project (cascades to designs/vizes/revisions). Returns every
+    image path it owned — reference *and* revision renders — so the caller can
+    unlink them; the files themselves are NOT removed here."""
     with _lock:
-        row = (
+        rows = (
             conn()
-            .execute("SELECT image_path FROM designs WHERE project_id=?", (project_id,))
+            .execute(
+                "SELECT image_path FROM designs WHERE project_id=?"
+                " UNION"
+                " SELECT r.image_path FROM revisions r"
+                "  JOIN visualizations v ON v.id=r.visualization_id"
+                "  JOIN designs d ON d.id=v.design_id WHERE d.project_id=?",
+                (project_id, project_id),
+            )
             .fetchall()
         )
         conn().execute("DELETE FROM projects WHERE id=?", (project_id,))
         conn().commit()
-        return row
+        return rows
 
 
 # ----------------------------------------------------------------- designs
@@ -291,7 +336,7 @@ def list_visualizations(design_id: int):
         )
 
 
-def set_current_revision(viz_id: int, revision_id: int):
+def set_current_revision(viz_id: int, revision_id: int | None):
     with _lock:
         conn().execute(
             "UPDATE visualizations SET current_revision_id=? WHERE id=?",
@@ -429,6 +474,25 @@ def set_job_failed(job_id: int, error: str):
             (error, job_id),
         )
         conn().commit()
+
+
+def recover_stale_jobs() -> int:
+    """Startup: the job queue lives in memory, so queued/running rows from a
+    previous process can never finish. Fail them loudly instead of leaving
+    zombie rows the UI polls forever. Returns how many rows were failed.
+
+    ponytail: queued jobs are failed, not requeued — their api_key only ever
+    lived in the dead process. Requeue is possible only when the env key is
+    set; add that if losing queued work on restart ever matters.
+    """
+    with _lock:
+        cur = conn().execute(
+            "UPDATE jobs SET status='failed',"
+            " error='server restarted mid-job', completed_at=datetime('now')"
+            " WHERE status IN ('queued','running')"
+        )
+        conn().commit()
+        return cur.rowcount
 
 
 def new_image_path(ext: str = "png"):

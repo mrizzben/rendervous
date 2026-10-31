@@ -5,20 +5,22 @@ Async generation via a single background worker thread consuming a job queue.
 """
 
 import base64
+import contextlib
 import io
 import json
 import os
 import queue
 import threading
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
+from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
-from . import db, prompt_builder
+from . import db, geometry, prompt_builder
 from . import openrouter as or_
 
 app = FastAPI(title="Rendervous")
@@ -44,6 +46,18 @@ def _json(text: str) -> dict:
         return json.loads(text or "{}")
     except (ValueError, TypeError):
         return {}
+
+
+def _public_params(params: dict) -> dict:
+    """Stored job/revision params minus the reference data URL.
+
+    The browser already has the reference as the design's /images URL;
+    re-sending multi-MB base64 on every 2s job poll (and per revision in the
+    project tree) buys nothing.
+    """
+    out = dict(params)
+    out.pop("image_url", None)
+    return out
 
 
 def _image_url(path: str) -> str:
@@ -95,6 +109,9 @@ def _save_bytes(data: bytes, ext: str = "png") -> str:
     return fname
 
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # keep in sync with nginx client_max_body_size
+
+
 def _resize(data: bytes, width, height) -> bytes:
     """Resize+center-crop output to width x height; always emit PNG.
 
@@ -107,11 +124,45 @@ def _resize(data: bytes, width, height) -> bytes:
     w, h = width or img.width, height or img.height
     if img.format == "PNG" and (img.width, img.height) == (w, h):
         return data
-    img = img.convert("RGB")
-    img = img.resize((w, h), Image.Resampling.LANCZOS)
+    img = ImageOps.fit(img.convert("RGB"), (w, h), Image.Resampling.LANCZOS)
     out = io.BytesIO()
     img.save(out, format="PNG")
     return out.getvalue()
+
+
+async def _read_upload(upload: UploadFile) -> tuple[bytes, str]:
+    """Read an upload with a hard size cap and verify it is a real image.
+
+    The bytes decide the format, not the filename: a .exe renamed .png never
+    reaches disk, and a .webp named .png is stored under its true extension.
+    """
+    data = bytearray()
+    while chunk := await upload.read(1 << 20):
+        data += chunk
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Image is too large — the max file size is 10 MB.",
+            )
+    if not data:
+        raise HTTPException(status_code=400, detail="empty upload")
+    raw = bytes(data)
+    try:
+        img = Image.open(io.BytesIO(raw))
+        fmt = (img.format or "").lower()
+        img.verify()
+    except Image.DecompressionBombError as e:
+        raise HTTPException(
+            status_code=400, detail="Image is too large to process"
+        ) from e
+    except (UnidentifiedImageError, OSError) as e:
+        raise HTTPException(
+            status_code=400, detail="Unsupported or corrupt image"
+        ) from e
+    ext = {"jpeg": "jpg", "png": "png", "webp": "webp"}.get(fmt)
+    if not ext:
+        raise HTTPException(status_code=400, detail=f"unsupported image format: {fmt}")
+    return raw, ext
 
 
 def client_api_key(header_key: str | None, body_key: str | None) -> str:
@@ -122,7 +173,52 @@ def client_api_key(header_key: str | None, body_key: str | None) -> str:
     return os.environ.get("OPENROUTER_API_KEY", "")
 
 
+@app.post("/api/edits")
+async def manual_edit(
+    visualization_id: int = Form(...),
+    parent_revision_id: int = Form(...),
+    meta: str = Form("{}"),
+    file: UploadFile | None = File(default=None),
+):
+    """Save a model-free edit (rotate/flip/tones/sharpen/vignette…) as a
+    minor revision of the parent. Deterministic tools bake client-side;
+    this endpoint only persists the result and chains it as v2 → v2.1 …"""
+    if file is None:
+        raise HTTPException(status_code=400, detail="file (multipart) required")
+    if not db.get_visualization(visualization_id):
+        raise HTTPException(status_code=404, detail="visualization not found")
+    data, ext = await _read_upload(file)
+    path = _save_bytes(data, ext or "png")
+    label = _next_edit_label(visualization_id, parent_revision_id)
+    revision_id = db.create_revision(
+        visualization_id=visualization_id,
+        parent_revision_id=parent_revision_id,
+        label=label,
+        prompt="",
+        negative_prompt="",
+        model="manual",
+        params=json.dumps({"edit_kind": "manual", "tools": _json(meta)}),
+        image_path=path,
+    )
+    db.set_current_revision(visualization_id, revision_id)
+    return {"ok": True, "id": revision_id, "label": label}
+
+
 # ------------------------------------------------------------------ models
+
+
+class EditSpec(BaseModel):
+    """Region edit: rectangle in natural image pixels + change description."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+    instruction: str
+    kind: Literal["rect", "lasso", "pen"] = "rect"
+    # lasso polygon / pen polyline, flat [x1,y1,x2,y2,…] in native px
+    points: list[int] | None = None
+    width: int | None = None  # pen tip in native px
 
 
 class GenerateRequest(BaseModel):
@@ -141,6 +237,7 @@ class GenerateRequest(BaseModel):
     design_id: int | None = None
     visualization_id: int | None = None
     parent_revision_id: int | None = None
+    edit: EditSpec | None = None  # region edit of a rendered image
     settings: dict | None = None
     api_key: str | None = None
 
@@ -149,6 +246,95 @@ class GenerateRequest(BaseModel):
 def health():
     env_key = bool(os.environ.get("OPENROUTER_API_KEY"))
     return {"ok": True, "key_configured": env_key}
+
+
+def _next_edit_label(viz_id: int, parent_id: int | None) -> str:
+    """Minor-label builder shared by AI region edits and manual tool edits:
+    v2 → v2.1 → v2.2 … (unique, monotone, derived from existing rows)."""
+    rows = db.list_revisions(viz_id)
+    last = db.last_revision(viz_id)
+    parent_row = next((r for r in rows if r["id"] == parent_id), last)
+    base = (parent_row["label"] if parent_row else "v0").split(".")[0]
+    k = 1 + sum(1 for r in rows if r["label"].startswith(base + "."))
+    return f"{base}.{k}"
+
+
+def build_edit_prompt(edit: EditSpec, img_w: int, img_h: int) -> str:
+    """Prompt for an exact-region edit. Rect edits are constrained by
+    coordinates; lasso/pen edits by a highlighter marker composited onto a
+    copy of the input image (see _annotate_image)."""
+    if edit.kind in ("lasso", "pen"):
+        return (
+            "This is an exact-region retouching task on an image of "
+            f"{img_w}x{img_h} pixels. A region is marked with a bright "
+            "translucent magenta highlighter marker. Change ONLY the "
+            f"marked region: {edit.instruction}. "
+            "The marking is an annotation made on a copy of the image — "
+            "fully remove the marker and reconstruct the original "
+            "realistic look inside the marked region while applying the "
+            "change. Everything outside the marked region must remain "
+            "pixel-identical: same content, framing, colors, lighting — "
+            "no shift, no crop, no zoom. Inside the marked region keep "
+            "the architecture, materials and lighting consistent with the "
+            "rest of the image. The marked region lies within the "
+            f"bounding box ({edit.x},{edit.y})–({edit.x + edit.w},{edit.y + edit.h})."
+        )
+    return (
+        "This is an exact-region retouching task on an image of "
+        f"{img_w}x{img_h} pixels. Change ONLY the rectangle from "
+        f"({edit.x},{edit.y}) to ({edit.x + edit.w},{edit.y + edit.h}): "
+        f"{edit.instruction}. "
+        "Everything outside this rectangle must remain pixel-identical: "
+        "same content, same framing, same colors, same lighting — no "
+        "shift, no crop, no zoom. Inside the rectangle keep the surrounding "
+        "architecture, materials and lighting consistent with the rest of "
+        "the image."
+    )
+
+
+MARK = (236, 72, 153)  # bright magenta highlighter
+
+
+def _annotate_image(data_url: str, edit: EditSpec, w: int, h: int) -> str:
+    """Composite the selection marker onto a COPY of the input image.
+
+    Lasso → translucent polygon fill + solid outline. Pen → translucent fat
+    stroke + solid centerline. Returns a PNG data URL; the stored input is
+    never modified on disk, the marked copy only rides on the job.
+    """
+    img = Image.open(io.BytesIO(base64.b64decode(data_url.split(",", 1)[1]))).convert(
+        "RGBA"
+    )
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(overlay)
+    raw = edit.points or []
+    pts = [
+        (max(0, min(w - 1, raw[i])), max(0, min(h - 1, raw[i + 1])))
+        for i in range(0, len(raw) - 1, 2)
+    ]
+    if not pts:
+        raise or_.OpenRouterError("empty selection points")
+    if edit.kind == "pen" and edit.width:
+        r = max(2, edit.width // 2)
+        d.line(pts, fill=(*MARK, 110), width=max(2, edit.width), joint="curve")
+        for x, y in (pts[0], pts[-1]):
+            d.ellipse((x - r, y - r, x + r, y + r), fill=(*MARK, 110))
+        d.line(
+            pts, fill=(*MARK, 255), width=max(2, edit.width // 10), joint="curve"
+        )
+    else:
+        if len(pts) >= 2:
+            d.polygon(pts, fill=(*MARK, 110))
+            d.line(
+                pts + [pts[0]],
+                fill=(*MARK, 255),
+                width=max(4, w // 170),
+                joint="curve",
+            )
+    merged = Image.alpha_composite(img, overlay).convert("RGB")
+    buf = io.BytesIO()
+    merged.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 @app.get("/api/models")
@@ -177,6 +363,28 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
         if design:
             image_url = _data_url(design["image_path"])
 
+    # Region edit: the edit spec defines the prompt and needs an input image.
+    if req.edit:
+        if not image_url:
+            raise HTTPException(
+                status_code=400,
+                detail="an area edit requires an input image (image_url or design_id)",
+            )
+        w, h = _image_size(image_url)
+        edit = req.edit
+        if edit.kind == "lasso" and (not edit.points or len(edit.points) < 6):
+            raise HTTPException(
+                status_code=400, detail="lasso selection needs at least 3 points"
+            )
+        if edit.kind == "pen" and (not edit.points or len(edit.points) < 4):
+            raise HTTPException(
+                status_code=400, detail="pen selection needs at least 2 points"
+            )
+        if edit.kind != "rect":
+            # mark a copy of the input; the marker is the prompt constraint
+            image_url = _annotate_image(image_url, edit, w, h)
+        prompt = build_edit_prompt(edit, w, h)
+
     params = {
         "width": req.width,
         "height": req.height,
@@ -189,6 +397,8 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
         "image_url": image_url or None,
         "visualization_id": req.visualization_id,
         "parent_revision_id": req.parent_revision_id,
+        # stored for provenance + the worker's minor-version label logic
+        "edit": req.edit.model_dump() if req.edit else None,
     }
     job_id = db.create_job(
         model=req.model or or_.DEFAULT_MODEL,
@@ -217,7 +427,7 @@ def get_job(job_id: int):
         "error": job["error"],
         "model": job["model"],
         "prompt": job["prompt"],
-        "params": params,
+        "params": _public_params(params),
         "revision_id": job["revision_id"],
         "created_at": job["created_at"],
     }
@@ -299,7 +509,7 @@ def project_tree(project_id: int):
                         "label": r["label"],
                         "prompt": r["prompt"],
                         "model": r["model"],
-                        "params": _json(r["params"]),
+                        "params": _public_params(_json(r["params"])),
                         "image_url": _image_url(r["image_path"]),
                         "created_at": r["created_at"],
                     }
@@ -335,12 +545,7 @@ async def upload_design(
 ):
     if file is None:
         raise HTTPException(status_code=400, detail="file (multipart) required")
-    data = await file.read()
-    if not data:
-        raise HTTPException(status_code=400, detail="empty upload")
-    ext = (file.filename or "png").rsplit(".", 1)[-1].lower()
-    if ext not in ("png", "jpg", "jpeg"):
-        ext = "png"
+    data, ext = await _read_upload(file)
     path = _save_bytes(data, ext)
     did = db.create_design(project_id, name.strip() or "Reference", path)
     return {"id": did, "name": name, "image_url": _image_url(path)}
@@ -401,7 +606,15 @@ def delete_revision(revision_id: int):
     rev = db.delete_revision(revision_id)
     if not rev:
         raise HTTPException(status_code=404, detail="revision not found")
-    Path(os.path.join(db.IMAGES_DIR, rev["image_path"])).unlink(missing_ok=True)
+    Path(os.path.join(db.IMAGES_DIR, os.path.basename(rev["image_path"]))).unlink(
+        missing_ok=True
+    )
+    # Deleting the *current* revision would leave current_revision_id dangling:
+    # the canvas blanks and the next render branches off a ghost id.
+    viz = db.get_visualization(rev["visualization_id"])
+    if viz and viz["current_revision_id"] == revision_id:
+        last = db.last_revision(viz["id"])
+        db.set_current_revision(viz["id"], last["id"] if last else None)
     return {"ok": True}
 
 
@@ -413,13 +626,45 @@ def delete_revision(revision_id: int):
 _worker_queue: "queue.Queue[tuple[int, str]]" = queue.Queue()
 
 
+def _geometry_lock(params: dict, image_bytes: bytes):
+    """Apply the geometry lock when this pass is about atmosphere.
+
+    Returns (image_bytes, info) or None to skip. Default is on whenever an
+    environment preset / season / weather is set (the passes that drift),
+    off otherwise (a pure material or lighting pass is *supposed* to change
+    how the building looks). settings.geometry_lock overrides either way.
+    """
+    ref_url = params.get("image_url")
+    if not ref_url:
+        return None
+    s = params.get("settings") or {}
+    want = s.get("geometry_lock")
+    if want is None:
+        want = s.get("environment", "none") != "none" or bool(
+            s.get("season") or s.get("weather")
+        )
+    if not want:
+        return None
+    try:
+        raw_ref = base64.b64decode(ref_url.split(",", 1)[1])
+        return geometry.protect_geometry(raw_ref, image_bytes)
+    except Exception as e:  # noqa: BLE001 — a safety net must not fail the job
+        return image_bytes, {"error": str(e)}
+
+
 def _worker():
     while True:
         job_id, api_key = _worker_queue.get()
-        job = db.get_job(job_id)
-        if not job:
+        try:
+            job = db.get_job(job_id)
+            if not job:
+                continue
+            db.set_job_running(job_id)
+        except Exception as e:  # noqa: BLE001 — a bad row must not kill the worker
+            # If the DB is down the job cannot be failed either; drop it.
+            with contextlib.suppress(Exception):
+                db.set_job_failed(job_id, str(e))
             continue
-        db.set_job_running(job_id)
         try:
             params = _json(job["params"])
             settings = params.get("settings") or {}
@@ -443,21 +688,39 @@ def _worker():
                 seed=params.get("seed"),
                 aspect_ratio=ar or None,
             )
+            # Geometry lock: when the pass is about atmosphere/environment,
+            # the model tends to re-synthesise walls and windows to justify
+            # the new depth and light. Paste the reference building back so
+            # the environment only survives where the building isn't.
+            lock_info = _geometry_lock(params, image_bytes)
+            if lock_info is not None:
+                image_bytes, lock_info = lock_info
+                params["geometry_lock"] = lock_info
             data = _resize(image_bytes, params.get("width"), params.get("height"))
             path = _save_bytes(data, "png")
             revision_id = None
             viz_id = params.get("visualization_id")
+            # Never persist the base64 reference into the revision row: it is
+            # multi-MB per revision and is served back on every project load.
+            params.pop("image_url", None)
             if viz_id:
-                # label v{n} where n = sibling count + 1
-                n = len(db.list_revisions(viz_id)) + 1
+                # Full renders are majors (v1, v2, …). Edits — AI region edits
+                # and manual tool edits — are minors of their parent:
+                # v2 → v2.1 → v2.2 …
+                rows = db.list_revisions(viz_id)
                 last = db.last_revision(viz_id)
                 parent = params.get("parent_revision_id") or (
                     last["id"] if last else None
                 )
+                label = (
+                    _next_edit_label(viz_id, parent)
+                    if params.get("edit")
+                    else f"v{len(rows) + 1}"
+                )
                 revision_id = db.create_revision(
                     visualization_id=viz_id,
                     parent_revision_id=parent,
-                    label=f"v{n}",
+                    label=label,
                     prompt=job["prompt"],
                     negative_prompt=settings.get("negative_prompt", ""),
                     model=job["model"],
@@ -470,4 +733,13 @@ def _worker():
             db.set_job_failed(job_id, str(e))
 
 
+db.recover_stale_jobs()  # in-memory queue is gone; zombie rows poll forever
 threading.Thread(target=_worker, daemon=True, name="rendervous-worker").start()
+
+
+# Desktop build (and `uvicorn` + `npm run build` locally): serve the built SPA
+# from this process instead of nginx. Registered last so /api and /images match
+# first; StaticFiles handles only what nothing else claimed.
+_DIST = os.path.join(db.BASE_DIR, "dist")
+if os.path.isdir(_DIST):
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="spa")

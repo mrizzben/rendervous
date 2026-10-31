@@ -82,3 +82,90 @@ export const ENVIRONMENTS = [
   { id: "forest", label: "Forest" },
   { id: "custom", label: "Custom" },
 ] as const;
+
+// --- P1 features (each branch fills ONLY its own marker) -------------------
+
+export const SEASONS = [
+  { id: "summer", label: "Summer" },
+  { id: "autumn", label: "Autumn" },
+  { id: "winter", label: "Winter" },
+  { id: "spring", label: "Spring" },
+] as const;
+
+export const WEATHERS = [
+  { id: "clear", label: "Clear" },
+  { id: "overcast", label: "Overcast" },
+  { id: "fog", label: "Fog" },
+  { id: "rain", label: "Rain" },
+  { id: "snow", label: "Snow" },
+] as const;
+
+export const FINISHES = [
+  { id: "matte", label: "Matte" },
+  { id: "polished", label: "Polished" },
+  { id: "weathered", label: "Weathered" },
+] as const;
+
+// Sky presets (Sun & Sky). The sky drives the light: describing it lets the
+// model re-light the scene to match (Lumion Real Skies approach).
+export const SKIES = [
+  { id: "clear_blue", label: "Clear blue" },
+  { id: "scattered_clouds", label: "Scattered clouds" },
+  { id: "overcast_dramatic", label: "Dramatic overcast" },
+  { id: "hazy", label: "Hazy" },
+] as const;
+
+// Grade intensity for the Style presets. 0-33 subtle, 34-66 moderate,
+// 67-100 cinematic. Unset = the preset's grade wording stands alone.
+export const GRADE_INTENSITY_MIN = 0;
+export const GRADE_INTENSITY_MAX = 100;
+
+// Saturation scale for the color grade. 50 ≈ natural, 0 ≈ monochrome,
+// 100 ≈ hyper-saturated.
+export const SATURATION_MIN = 0;
+export const SATURATION_MAX = 100;
+
+// --- User-saved presets (model selection + visualization config) ------------
+
+// A named snapshot of the render engine and the full Visualize panel state
+// (custom_instruction included), stored client-side.
+export interface Preset {
+  name: string;
+  modelId: string;
+  settings: Settings;
+}
+
+// localStorage key, matching the "rendervous_" prefix of KEY_STORAGE in api.ts.
+export const PRESETS_STORAGE_KEY = "rendervous_presets";
+
+// Defensive read: absent key, corrupt JSON, non-array payloads, or malformed
+// entries all degrade to [] or skipped entries rather than throwing — presets
+// are a convenience and must never block startup.
+export function loadPresets(): Preset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (p): p is Preset =>
+        !!p &&
+        typeof p === "object" &&
+        typeof (p as Preset).name === "string" &&
+        typeof (p as Preset).modelId === "string" &&
+        !!(p as Preset).settings &&
+        typeof (p as Preset).settings === "object",
+    );
+  } catch {
+    return [];
+  }
+}
+
+// Write may fail on quota; presets are non-critical so the error is swallowed.
+export function savePresets(presets: Preset[]): void {
+  try {
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+  } catch {
+    // quota exceeded / storage unavailable — keep UI working without persistence
+  }
+}

@@ -494,6 +494,13 @@ textarea:focus {
   min-width: 0;
   min-height: 0;
 }
+.stage-area {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 
 .stage {
   position: relative;
@@ -567,6 +574,13 @@ textarea:focus {
   letter-spacing: 1.4px;
   font-weight: 500;
 }
+/* right-side caption cluster: download + render label — keeps the center
+   clear for the .stage-tabs pill */
+.cap-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .cap-design {
   color: #8b93a2;
   background: #0b0d11d9;
@@ -617,6 +631,289 @@ textarea:focus {
   padding: 5px 12px;
   border-radius: 20px;
   pointer-events: none;
+}
+
+/* floating prompt panel: draggable & minimizable, over the stage */
+.prompt-float {
+  position: absolute;
+  right: 18px;
+  bottom: 48px;
+  width: 286px;
+  max-width: calc(100% - 36px);
+  z-index: 3;
+  background: #13161bf5;
+  border: 1px solid #2c323c;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px #000000a6;
+  backdrop-filter: blur(6px);
+}
+.pf-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px 7px 11px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.pf-head:active {
+  cursor: grabbing;
+}
+.pf-head .rail-title {
+  pointer-events: none;
+}
+.pf-min {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #7d8594;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pf-min:hover {
+  color: #edf0f4;
+  background: #1d2128;
+  border-color: #2c323c;
+}
+.pf-body {
+  padding: 0 9px 9px;
+}
+.prompt-float textarea {
+  min-height: 56px;
+  resize: none;
+}
+
+/* stage mode tabs: Render (split compare) / Edit (render only) */
+.stage-tabs {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  background: #0b0d11d9;
+  border: 1px solid #232830;
+  border-radius: 20px;
+  padding: 3px;
+  z-index: 2;
+}
+.stage-tab {
+  border: none;
+  background: none;
+  color: #8c94a2;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "Space Grotesk", Inter, sans-serif;
+  letter-spacing: 0.3px;
+  padding: 4px 16px;
+  border-radius: 14px;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.stage-tab:hover {
+  color: #edf0f4;
+}
+.stage-tab.active {
+  background: #152620;
+  color: #7fe0c3;
+}
+.stage-tab:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* Edit tab: rendered result only */
+.stage-edit {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.stage-edit img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* region edit: selection box + inline mini-form */
+.edit-overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+.edit-box {
+  position: absolute;
+  border: 1.5px dashed #63e6be;
+  background: #63e6be14;
+  cursor: move;
+  /* dim everything outside the selection for focus */
+  box-shadow: 0 0 0 2000px #00000059;
+}
+.edit-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #63e6be;
+  border: 2px solid #0f1115;
+}
+.edit-handle-nw {
+  left: -6px;
+  top: -6px;
+  cursor: nwse-resize;
+}
+.edit-handle-ne {
+  right: -6px;
+  top: -6px;
+  cursor: nesw-resize;
+}
+.edit-handle-sw {
+  left: -6px;
+  bottom: -6px;
+  cursor: nesw-resize;
+}
+.edit-handle-se {
+  right: -6px;
+  bottom: -6px;
+  cursor: nwse-resize;
+}
+/* lasso/polygon + highlighter-pen selection preview (Edit tab) */
+.edit-shape-svg {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+.sel-lasso {
+  fill: rgba(99, 230, 190, 0.2);
+  stroke: #63e6be;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.sel-pen {
+  fill: none;
+  stroke: #63e6be;
+  stroke-opacity: 0.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sel-pen-line {
+  fill: none;
+  stroke: #63e6be;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sel-poly-open {
+  fill: none;
+  stroke: #63e6be;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.edit-form {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 250px;
+  max-width: 300px;
+  background: #13161bf5;
+  border: 1px solid #2c323c;
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 12px 32px #000000a6;
+}
+.edit-instr {
+  min-height: 44px;
+  resize: none;
+  line-height: 1.45;
+}
+.edit-form-row {
+  display: flex;
+  gap: 6px;
+}
+.btn-edit-apply {
+  flex: 1;
+  background: linear-gradient(90deg, #63e6be, #4acfa6);
+  color: #06231c;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-weight: 700;
+  font-size: 12.5px;
+  font-family: "Space Grotesk", Inter, sans-serif;
+  cursor: pointer;
+}
+.btn-edit-apply:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+.btn-edit-apply:disabled {
+  opacity: 0.45;
+  background: #232830;
+  color: #8c94a2;
+  cursor: default;
+}
+.btn-edit-cancel {
+  flex: none;
+  background: none;
+  border: 1px dashed #2c323c;
+  border-radius: 6px;
+  color: #8c94a2;
+  padding: 7px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-edit-cancel:hover {
+  color: #63e6be;
+  border-color: #63e6be;
+}
+
+/* edit panel (right column in Edit mode) */
+.pane-hidden {
+  display: none;
+}
+/* live edit preview drawn over the stage render (Edit tab) */
+.stage-edit-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.edit-footer-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.edit-footer-row .btn-edit-cancel {
+  flex: 1;
+  border: 1px solid #2c323c;
+  background: #171a20;
+}
+.btn-edit-reset {
+  flex: 1;
+  background: none;
+  border: 1px dashed #2c323c;
+  border-radius: 6px;
+  color: #8c94a2;
+  padding: 7px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-edit-reset:hover:not(:disabled) {
+  color: #63e6be;
+  border-color: #63e6be;
+}
+.btn-edit-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* empty states */
@@ -694,7 +991,7 @@ textarea:focus {
   flex: none;
   background: #13161b;
   border-left: 1px solid #232830;
-  padding: 16px;
+  padding: 16px 16px 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -750,6 +1047,47 @@ textarea:focus {
   background: #152620;
   border-color: #63e6be;
   color: #7fe0c3;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* preset bar: save current model+config combo, apply or delete saved ones */
+.preset-save {
+  border-style: dashed;
+  color: #8c94a2;
+}
+.preset-save:hover:not(:disabled) {
+  color: #63e6be;
+  border-color: #63e6be;
+}
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 8px;
+  cursor: default;
+}
+.preset-apply {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.preset-del {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #8c94a2;
+  cursor: pointer;
+}
+.preset-del:hover {
+  color: #ff7a7a;
 }
 
 /* custom range sliders — WebKit & Firefox */
@@ -845,6 +1183,32 @@ input[type="range"]:disabled {
 .adv .ctl:first-of-type {
   margin-top: 10px;
 }
+.adv-body .ctl + .ctl {
+  margin-top: 16px;
+}
+.adv-val {
+  margin-left: auto;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  color: #63e6be;
+  text-transform: none;
+}
+
+/* sticky render footer: prompt + Render stay visible without scrolling */
+.render-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -16px;
+  padding: 12px 16px 14px;
+  background: #13161b;
+  border-top: 1px solid #232830;
+  box-shadow: 0 -8px 12px #13161b;
+}
+.render-footer .ctl {
+  margin-bottom: 12px;
+}
 
 .detail-inp {
   min-height: 62px;
@@ -874,7 +1238,6 @@ input[type="range"]:disabled {
 }
 .btn-render {
   width: 100%;
-  margin-top: 2px;
   padding: 13px 14px;
   font-size: 14px;
   font-weight: 700;
@@ -920,6 +1283,8 @@ input[type="range"]:disabled {
 }
 .ctl-note {
   line-height: 1.55;
+  margin-top: 8px;
+  font-size: 11px;
 }
 
 /* ---- filmstrip ---- */
