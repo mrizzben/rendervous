@@ -15,6 +15,9 @@ downloads/
 eggs/
 .eggs/
 lib/
+# Keep the application's source modules despite the generic Python lib ignore.
+!src/lib/
+!src/lib/**
 lib64/
 parts/
 sdist/
