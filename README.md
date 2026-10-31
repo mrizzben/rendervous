@@ -51,6 +51,72 @@ FRONTEND_PORT=8080 docker compose up --build
 - Only the frontend is host-exposed (`FRONTEND_PORT`, default `8080`); the backend is reachable only on the compose network.
 - The frontend container is nginx serving the built assets and reverse-proxying `/api` + `/images` to the backend; the backend starts first (healthcheck-gated).
 
+## Desktop app (Windows / macOS)
+
+`desktop.py` runs the same FastAPI app in-process on a free localhost port and
+shows it in a native window (pywebview) — the built SPA is served by that same
+process, so there is no nginx and no second process.
+
+### Publish a release
+
+Push a version tag such as `v1.2.3`. GitHub Actions builds and publishes a
+Windows installer plus macOS DMGs on the repository's **Releases** page. The
+macOS DMG opens with Rendervous and an Applications shortcut; Windows setup
+installs for the current user and adds a Start Menu shortcut. Manual workflow
+runs make unsigned QA artifacts only; they do not publish a release.
+
+Before tagging a release, add these in GitHub → Settings → Secrets and
+variables → Actions:
+
+- `WINDOWS_CERTIFICATE_PFX_BASE64`: base64-encoded Windows code-signing PFX.
+- `WINDOWS_CERTIFICATE_PASSWORD`: password for that PFX.
+- `APPLE_CERTIFICATE_P12_BASE64`: base64-encoded Apple Developer ID
+  Application certificate exported as a P12.
+- `APPLE_CERTIFICATE_PASSWORD`: password for the P12.
+- `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`: Apple account
+  credentials for notarization. A paid Apple Developer account is required.
+
+Encode each exported certificate locally before saving it as a secret:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("codesign.pfx"))
+```
+
+```bash
+base64 -i DeveloperID.p12 | tr -d '\n'
+```
+
+Keep certificates and passwords private. Once configured, publish with:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Tag builds fail rather than publish unsigned releases if signing or
+notarization credentials are missing. Signing
+removes the unknown-publisher warning; Windows SmartScreen can still warn for
+a new certificate until it earns reputation.
+
+### Build locally
+
+Build on the target OS (no cross-compiling):
+
+```bash
+npm ci && npm run build
+python3 -m venv .venv-desktop
+.venv-desktop/bin/pip install -r requirements-desktop.txt
+.venv-desktop/bin/pyinstaller packaging/rendervous.spec --noconfirm \
+  --distpath build/app --workpath build/pyinstaller
+```
+
+- Data (SQLite + images) stays under `%LOCALAPPDATA%\Rendervous` on Windows
+  and `~/Library/Application Support/Rendervous` on macOS; set
+  `RENDERVOUS_DATA` to override. Repo/Docker still uses `./data`.
+- Windows uses WebView2 (preinstalled on Windows 11 and current Windows 10).
+- To build the Windows installer locally, install Inno Setup 6 and compile
+  `packaging/windows/Rendervous.iss` after building the app.
+
 ## API (summary)
 
 | Endpoint | Purpose |

@@ -13,11 +13,33 @@ file (server/models_catalog.json), not DB state.
 
 import os
 import sqlite3
+import sys
 import threading
 import uuid
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+
+
+def _data_dir() -> str:
+    """Where the SQLite DB and images live.
+
+    Repo/Docker: ./data next to the code. Frozen desktop build: the install
+    dir is read-only (Program Files, macOS .app), so use the per-user dir.
+    """
+    override = os.environ.get("RENDERVOUS_DATA")
+    if override:
+        return override
+    if getattr(sys, "frozen", False):
+        if os.name == "nt":
+            base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+            return os.path.join(base, "Rendervous")
+        return os.path.join(
+            os.path.expanduser("~"), "Library", "Application Support", "Rendervous"
+        )
+    return os.path.join(BASE_DIR, "data")
+
+
+DATA_DIR = _data_dir()
 IMAGES_DIR = os.path.join(DATA_DIR, "images")
 DB_PATH = os.path.join(DATA_DIR, "rendervous.db")
 

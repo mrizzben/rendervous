@@ -735,3 +735,11 @@ def _worker():
 
 db.recover_stale_jobs()  # in-memory queue is gone; zombie rows poll forever
 threading.Thread(target=_worker, daemon=True, name="rendervous-worker").start()
+
+
+# Desktop build (and `uvicorn` + `npm run build` locally): serve the built SPA
+# from this process instead of nginx. Registered last so /api and /images match
+# first; StaticFiles handles only what nothing else claimed.
+_DIST = os.path.join(db.BASE_DIR, "dist")
+if os.path.isdir(_DIST):
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="spa")
