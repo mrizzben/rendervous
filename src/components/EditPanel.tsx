@@ -9,10 +9,11 @@ interface EditPanelProps {
   disabled: boolean; // no current render to edit
   busy: boolean;
   regionTool: boolean; // AI region-select tool active on the stage
+  shapeTool: "rect" | "lasso" | "pen" | "poly";
   onChange: (patch: Partial<EditOps>) => void;
   onReset: () => void;
   onHoldOriginal: (hold: boolean) => void;
-  onToggleRegion: () => void;
+  onShapeTool: (k: "rect" | "lasso" | "pen" | "poly") => void;
   onApply: () => void;
 }
 
@@ -51,10 +52,11 @@ export default function EditPanel({
   disabled,
   busy,
   regionTool,
+  shapeTool,
   onChange,
   onReset,
   onHoldOriginal,
-  onToggleRegion,
+  onShapeTool,
   onApply,
 }: EditPanelProps) {
   const dirty = isDirty(ops);
@@ -127,20 +129,32 @@ export default function EditPanel({
       <div className="ctl">
         <div className="ctl-label">Region edit · AI</div>
         <div className="chips">
-          <button
-            type="button"
-            className={`chip ${regionTool ? "active" : ""}`}
-            disabled={off}
-            onClick={onToggleRegion}
-            title="Change one area with the engine — everything outside stays untouched"
-          >
-            Select area
-          </button>
+          {(["rect", "lasso", "poly", "pen"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              className={`chip ${regionTool && shapeTool === k ? "active" : ""}`}
+              disabled={off}
+              onClick={() => onShapeTool(k)}
+                title={
+                  k === "rect"
+                    ? "Drag a rectangle on the stage"
+                    : k === "lasso"
+                      ? "Draw a freeform outline on the stage"
+                      : k === "poly"
+                        ? "Click to place corners — click the first corner (or double-click) to close"
+                        : "Paint the area with a brush highlighter"
+                }
+              >
+                {k === "rect" ? "Box" : k === "lasso" ? "Lasso" : k === "poly" ? "Polygon" : "Brush"}
+            </button>
+          ))}
         </div>
         {regionTool && (
           <div className="dim ctl-note">
-            Drag a box on the stage, describe the change, press Apply edit —
-            the engine changes only that area.
+            Draw the shape on the stage, describe the change, press Apply edit —
+            the engine changes only that area. Click the active chip again to
+            stop selecting.
           </div>
         )}
       </div>

@@ -104,12 +104,17 @@ export interface Settings {
 }
 
 export interface EditSpec {
-  /** Region edit — rectangle in natural image pixels. */
+  /** Selection bbox in natural image px (actual rect for kind="rect"). */
   x: number;
   y: number;
   w: number;
   h: number;
   instruction: string;
+  kind: "rect" | "lasso" | "pen";
+  /** lasso polygon / pen polyline, flat [x1,y1, x2,y2, …] natural px */
+  points?: number[];
+  /** pen tip in natural px */
+  width?: number;
 }
 
 export interface GenerationRequest {

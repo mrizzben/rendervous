@@ -12,11 +12,12 @@ import os
 import queue
 import threading
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from . import db, geometry, prompt_builder
@@ -214,6 +215,10 @@ class EditSpec(BaseModel):
     w: int
     h: int
     instruction: str
+    kind: Literal["rect", "lasso", "pen"] = "rect"
+    # lasso polygon / pen polyline, flat [x1,y1,x2,y2,…] in native px
+    points: list[int] | None = None
+    width: int | None = None  # pen tip in native px
 
 
 class GenerateRequest(BaseModel):
@@ -255,11 +260,25 @@ def _next_edit_label(viz_id: int, parent_id: int | None) -> str:
 
 
 def build_edit_prompt(edit: EditSpec, img_w: int, img_h: int) -> str:
-    """Prompt for an exact-region edit: change the box, keep the rest.
-
-    Prompt-guided constraint only (no mask/crop compositing): the model is
-    told to keep everything outside the rectangle pixel-identical.
-    """
+    """Prompt for an exact-region edit. Rect edits are constrained by
+    coordinates; lasso/pen edits by a highlighter marker composited onto a
+    copy of the input image (see _annotate_image)."""
+    if edit.kind in ("lasso", "pen"):
+        return (
+            "This is an exact-region retouching task on an image of "
+            f"{img_w}x{img_h} pixels. A region is marked with a bright "
+            "translucent magenta highlighter marker. Change ONLY the "
+            f"marked region: {edit.instruction}. "
+            "The marking is an annotation made on a copy of the image — "
+            "fully remove the marker and reconstruct the original "
+            "realistic look inside the marked region while applying the "
+            "change. Everything outside the marked region must remain "
+            "pixel-identical: same content, framing, colors, lighting — "
+            "no shift, no crop, no zoom. Inside the marked region keep "
+            "the architecture, materials and lighting consistent with the "
+            "rest of the image. The marked region lies within the "
+            f"bounding box ({edit.x},{edit.y})–({edit.x + edit.w},{edit.y + edit.h})."
+        )
     return (
         "This is an exact-region retouching task on an image of "
         f"{img_w}x{img_h} pixels. Change ONLY the rectangle from "
@@ -271,6 +290,51 @@ def build_edit_prompt(edit: EditSpec, img_w: int, img_h: int) -> str:
         "architecture, materials and lighting consistent with the rest of "
         "the image."
     )
+
+
+MARK = (236, 72, 153)  # bright magenta highlighter
+
+
+def _annotate_image(data_url: str, edit: EditSpec, w: int, h: int) -> str:
+    """Composite the selection marker onto a COPY of the input image.
+
+    Lasso → translucent polygon fill + solid outline. Pen → translucent fat
+    stroke + solid centerline. Returns a PNG data URL; the stored input is
+    never modified on disk, the marked copy only rides on the job.
+    """
+    img = Image.open(io.BytesIO(base64.b64decode(data_url.split(",", 1)[1]))).convert(
+        "RGBA"
+    )
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(overlay)
+    raw = edit.points or []
+    pts = [
+        (max(0, min(w - 1, raw[i])), max(0, min(h - 1, raw[i + 1])))
+        for i in range(0, len(raw) - 1, 2)
+    ]
+    if not pts:
+        raise or_.OpenRouterError("empty selection points")
+    if edit.kind == "pen" and edit.width:
+        r = max(2, edit.width // 2)
+        d.line(pts, fill=(*MARK, 110), width=max(2, edit.width), joint="curve")
+        for x, y in (pts[0], pts[-1]):
+            d.ellipse((x - r, y - r, x + r, y + r), fill=(*MARK, 110))
+        d.line(
+            pts, fill=(*MARK, 255), width=max(2, edit.width // 10), joint="curve"
+        )
+    else:
+        if len(pts) >= 2:
+            d.polygon(pts, fill=(*MARK, 110))
+            d.line(
+                pts + [pts[0]],
+                fill=(*MARK, 255),
+                width=max(4, w // 170),
+                joint="curve",
+            )
+    merged = Image.alpha_composite(img, overlay).convert("RGB")
+    buf = io.BytesIO()
+    merged.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 @app.get("/api/models")
@@ -307,7 +371,19 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
                 detail="an area edit requires an input image (image_url or design_id)",
             )
         w, h = _image_size(image_url)
-        prompt = build_edit_prompt(req.edit, w, h)
+        edit = req.edit
+        if edit.kind == "lasso" and (not edit.points or len(edit.points) < 6):
+            raise HTTPException(
+                status_code=400, detail="lasso selection needs at least 3 points"
+            )
+        if edit.kind == "pen" and (not edit.points or len(edit.points) < 4):
+            raise HTTPException(
+                status_code=400, detail="pen selection needs at least 2 points"
+            )
+        if edit.kind != "rect":
+            # mark a copy of the input; the marker is the prompt constraint
+            image_url = _annotate_image(image_url, edit, w, h)
+        prompt = build_edit_prompt(edit, w, h)
 
     params = {
         "width": req.width,

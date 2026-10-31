@@ -5,17 +5,41 @@ import { DownloadIcon, GripIcon, PlusIcon } from "../icons";
 import useSplit from "./useSplit";
 
 type Corner = "nw" | "ne" | "sw" | "se";
-interface Sel {
+export type ShapeKind = "rect" | "lasso" | "pen" | "poly";
+type Shape =
+  | { kind: "rect"; x: number; y: number; w: number; h: number }
+  | { kind: "lasso"; pts: { x: number; y: number }[] }
+  | { kind: "poly"; pts: { x: number; y: number }[]; closed: boolean }
+  | { kind: "pen"; pts: { x: number; y: number }[]; width: number };
+
+function bboxOf(s: Shape): {
   x: number;
   y: number;
   w: number;
   h: number;
+} {
+  if (s.kind === "rect") return { x: s.x, y: s.y, w: s.w, h: s.h };
+  // lasso/poly share the vertex-bbox logic; pen expands by its tip radius
+  const xs = s.pts.map((p) => p.x);
+  const ys = s.pts.map((p) => p.y);
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const pad = s.kind === "pen" ? s.width / 2 : 0;
+  return {
+    x: x0 - pad,
+    y: y0 - pad,
+    w: Math.max(...xs) - x0 + pad * 2,
+    h: Math.max(...ys) - y0 + pad * 2,
+  };
 }
+
 type DragMode =
   | { mode: "create"; start: { x: number; y: number } }
+  // lasso/pen: collect the pointer path
+  | { mode: "draw" }
   // resize: `start` is the fixed opposite corner
   | { mode: "resize"; start: { x: number; y: number } }
-  | { mode: "move"; start: { x: number; y: number }; orig: Sel };
+  | { mode: "move"; start: { x: number; y: number }; orig: Shape };
 
 interface CanvasStageProps {
   projectId: number | null;
@@ -29,6 +53,7 @@ interface CanvasStageProps {
   editOps: EditOps;
   showOriginal: boolean;
   regionTool: boolean;
+  shapeTool: ShapeKind;
   onEditApply?: (edit: EditSpec) => void;
   onUpload: (f: File | null) => void;
   onCreateProject: () => void;
@@ -49,6 +74,7 @@ export default function CanvasStage({
   editOps,
   showOriginal,
   regionTool,
+  shapeTool,
   onEditApply,
   onUpload,
   onCreateProject,
@@ -57,7 +83,7 @@ export default function CanvasStage({
   const compareMode = tab === "render";
 
   // ---- Edit tab: drag a region box on the rendered result ----------------
-  const [sel, setSel] = useState<Sel | null>(null);
+  const [sel, setSel] = useState<Shape | null>(null);
   const [instruction, setInstruction] = useState("");
   const [imgLoaded, setImgLoaded] = useState(false); // recompute box once loaded
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -82,10 +108,13 @@ export default function CanvasStage({
     return () => window.removeEventListener("keydown", onKey);
   }, [compareMode]);
 
-  // region-select tool off → drop any in-progress selection
+  // region-select tool off or shape switched → drop any in-progress selection
   useEffect(() => {
     if (!regionTool) setSel(null);
   }, [regionTool]);
+  useEffect(() => {
+    setSel(null);
+  }, [shapeTool]);
 
   // stage preview: redraw the rendered result with current edit ops (live)
   useEffect(() => {
@@ -128,16 +157,40 @@ export default function CanvasStage({
     // interactions with the region mini-form (textarea/buttons) must not
     // start an overlay drag or eat the button click
     if ((e.target as HTMLElement).closest(".edit-form")) return;
-    if (!imageBox()) return;
+    const b = imageBox();
+    if (!b) return;
     e.preventDefault();
     const kind = (e.target as HTMLElement).dataset.handle as
       | Corner
       | "box"
       | undefined;
     const p = toImgPt(e);
-    if (kind === "box" && sel) {
+    if (shapeTool === "poly") {
+      // click-to-place-vertices; clicking near the first vertex closes
+      dragRef.current = { mode: "draw" };
+      setSel((prev) => {
+        if (prev?.kind !== "poly") return { kind: "poly", pts: [p], closed: false };
+        if (
+          prev.pts.length >= 3 &&
+          Math.hypot(p.x - prev.pts[0].x, p.y - prev.pts[0].y) < 10
+        )
+          return { ...prev, closed: true };
+        return { ...prev, pts: [...prev.pts, p] };
+      });
+    } else if (shapeTool === "lasso" || shapeTool === "pen") {
+      dragRef.current = { mode: "draw" };
+      setSel(
+        shapeTool === "lasso"
+          ? { kind: "lasso", pts: [p] }
+          : {
+              kind: "pen",
+              pts: [p],
+              width: Math.max(8, Math.min(36, 0.055 * Math.min(b.w, b.h))),
+            },
+      );
+    } else if (kind === "box" && sel?.kind === "rect") {
       dragRef.current = { mode: "move", start: p, orig: sel };
-    } else if ((HANDLES as string[]).includes(kind ?? "") && sel) {
+    } else if ((HANDLES as string[]).includes(kind ?? "") && sel?.kind === "rect") {
       // anchor on the opposite corner keeps the other edge fixed
       dragRef.current = {
         mode: "resize",
@@ -157,35 +210,78 @@ export default function CanvasStage({
     const b = imageBox();
     if (!d || !b || e.buttons === 0) return;
     const p = toImgPt(e);
-    if (d.mode === "create" || d.mode === "resize") {
+    if (d.mode === "draw") {
+      // poly vertices are placed by clicks only — pointer moves are ignored
+      setSel((prev) => {
+        if (!prev || prev.kind === "rect" || prev.kind === "poly") return prev;
+        const last = prev.pts[prev.pts.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) < 3) return prev;
+        return { ...prev, pts: [...prev.pts, p] };
+      });
+    } else if (d.mode === "create" || d.mode === "resize") {
       setSel({
+        kind: "rect",
         x: Math.min(d.start.x, p.x),
         y: Math.min(d.start.y, p.y),
         w: Math.abs(p.x - d.start.x),
         h: Math.abs(p.y - d.start.y),
       });
-    } else {
+    } else if (d.orig.kind === "rect") {
       setSel({
-        ...d.orig,
+        kind: "rect",
         x: clampf(d.orig.x + (p.x - d.start.x), 0, b.w - d.orig.w),
         y: clampf(d.orig.y + (p.y - d.start.y), 0, b.h - d.orig.h),
+        w: d.orig.w,
+        h: d.orig.h,
       });
     }
   };
   const onOverlayUp = () => {
     dragRef.current = null;
   };
+  // double-click closes an in-progress polygon
+  const onOverlayDbl = () => {
+    setSel((prev) =>
+      prev?.kind === "poly" && prev.pts.length >= 3 && !prev.closed
+        ? { ...prev, closed: true }
+        : prev,
+    );
+  };
 
   const applyRegion = () => {
     const b = imageBox();
     if (!sel || !b || !onEditApply || !instruction.trim()) return;
+    if (sel.kind === "lasso" && sel.pts.length < 3) return;
+    if (sel.kind === "pen" && sel.pts.length < 2) return;
+    if (sel.kind === "poly" && (!sel.closed || sel.pts.length < 3)) return;
     // displayed px → natural image px (server expects native pixels)
-    onEditApply({
-      x: Math.max(0, Math.round(sel.x / b.scale)),
-      y: Math.max(0, Math.round(sel.y / b.scale)),
-      w: Math.max(1, Math.round(sel.w / b.scale)),
-      h: Math.max(1, Math.round(sel.h / b.scale)),
+    const nat = (v: number) => Math.round(v / b.scale);
+    const bb = bboxOf(sel);
+    const base = {
+      x: Math.max(0, nat(bb.x)),
+      y: Math.max(0, nat(bb.y)),
+      w: Math.max(1, nat(bb.w)),
+      h: Math.max(1, nat(bb.h)),
       instruction: instruction.trim(),
+      // poly reuses the server's lasso kind (same marker + prompt path)
+      kind: sel.kind === "poly" ? ("lasso" as const) : sel.kind,
+    };
+    if (sel.kind === "rect") {
+      onEditApply(base);
+      return;
+    }
+    // lasso/poly/pen all travel as kind "lasso"|"pen" shapes + points; poly
+    // deliberately reuses the server's lasso kind (same marker rendering)
+    const points: number[] = [];
+    for (const p of sel.pts) {
+      points.push(Math.max(0, nat(p.x)), Math.max(0, nat(p.y)));
+    }
+    onEditApply({
+      ...base,
+      points,
+      ...(sel.kind === "pen"
+        ? { width: Math.max(4, Math.round(sel.width / b.scale)) }
+        : {}),
     });
   };
 
@@ -256,13 +352,23 @@ export default function CanvasStage({
   // edit-tab internals for the JSX below (image geometry + form placement)
   const ib = compareMode ? null : imageBox();
   const editPreviewOn = !compareMode && imgLoaded && (isDirty(editOps) || showOriginal);
-  const hasSel = !!ib && !!sel && sel.w >= 4 && sel.h >= 4;
-  const editForm = hasSel
+  const hasSel =
+    !!ib &&
+    !!sel &&
+    (sel.kind === "rect"
+      ? sel.w >= 4 && sel.h >= 4
+      : sel.pts.length >= (sel.kind === "lasso" ? 3 : 2) &&
+        (() => {
+          const bb = bboxOf(sel);
+          return bb.w >= 4 && bb.h >= 4;
+        })());
+  const sbox = sel ? bboxOf(sel) : null;
+  const editForm = hasSel && sbox
     ? (() => {
-        const s = sel!;
-        const left = clampf(ib!.ox + s.x, 4, ib!.cw - 264);
-        const below = ib!.oy + s.y + s.h + 8;
-        const top = below + 118 > ib!.ch && s.y > 132 ? ib!.oy + s.y - 126 : below;
+        const left = clampf(ib!.ox + sbox.x, 4, ib!.cw - 264);
+        const below = ib!.oy + sbox.y + sbox.h + 8;
+        const top =
+          below + 118 > ib!.ch && sbox.y > 132 ? ib!.oy + sbox.y - 126 : below;
         return { left, top };
       })()
     : null;
@@ -331,8 +437,9 @@ export default function CanvasStage({
             onPointerMove={onOverlayMove}
             onPointerUp={onOverlayUp}
             onPointerCancel={onOverlayUp}
+            onDoubleClick={onOverlayDbl}
           >
-            {ib && imgLoaded && sel && (
+            {ib && imgLoaded && sel?.kind === "rect" && (
               <div
                 className="edit-box"
                 data-handle="box"
@@ -353,6 +460,55 @@ export default function CanvasStage({
                   />
                 ))}
               </div>
+            )}
+            {ib && imgLoaded && sel?.kind === "poly" && sel.pts.length >= 2 && (
+              <svg
+                className="edit-shape-svg"
+                style={{ left: ib.ox, top: ib.oy, width: ib.w, height: ib.h }}
+                viewBox={`0 0 ${ib.w} ${ib.h}`}
+              >
+                {sel.closed ? (
+                  <polygon
+                    className="sel-lasso"
+                    points={sel.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                  />
+                ) : (
+                  <polyline
+                    className="sel-poly-open"
+                    points={sel.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                  />
+                )}
+              </svg>
+            )}
+            {ib && imgLoaded && sel?.kind === "lasso" && sel.pts.length >= 2 && (
+              <svg
+                className="edit-shape-svg"
+                style={{ left: ib.ox, top: ib.oy, width: ib.w, height: ib.h }}
+                viewBox={`0 0 ${ib.w} ${ib.h}`}
+              >
+                <polygon
+                  className="sel-lasso"
+                  points={sel.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                />
+              </svg>
+            )}
+            {ib && imgLoaded && sel?.kind === "pen" && sel.pts.length >= 2 && (
+              <svg
+                className="edit-shape-svg"
+                style={{ left: ib.ox, top: ib.oy, width: ib.w, height: ib.h }}
+                viewBox={`0 0 ${ib.w} ${ib.h}`}
+              >
+                <polyline
+                  className="sel-pen"
+                  points={sel.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                  strokeWidth={sel.width}
+                />
+                <polyline
+                  className="sel-pen-line"
+                  points={sel.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+                  strokeWidth={Math.max(2, sel.width * 0.12)}
+                />
+              </svg>
             )}
             {editForm && (
               <div

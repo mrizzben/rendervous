@@ -74,6 +74,15 @@ export default function App() {
   const [editOps, setEditOps] = useState<EditOps>(DEFAULT_OPS);
   const [showOriginal, setShowOriginal] = useState(false);
   const [regionTool, setRegionTool] = useState(false); // AI region-select tool
+  const [shapeTool, setShapeTool] = useState<"rect" | "lasso" | "pen" | "poly">("rect");
+  // chips directly toggle the tool: click active chip again → tool off
+  const setRegionShapeTool = (k: "rect" | "lasso" | "pen" | "poly") => {
+    if (regionTool && shapeTool === k) setRegionTool(false);
+    else {
+      setShapeTool(k);
+      setRegionTool(true);
+    }
+  };
   const [presets, setPresets] = useState<Preset[]>(() => loadPresets());
 
   const model = useMemo(
@@ -477,6 +486,7 @@ export default function App() {
             editOps={editOps}
             showOriginal={showOriginal}
             regionTool={regionTool}
+            shapeTool={shapeTool}
             onEditApply={runEdit}
             onUpload={handleUpload}
             onCreateProject={() => {
@@ -530,10 +540,11 @@ export default function App() {
             disabled={!currentRev}
             busy={busy}
             regionTool={regionTool}
+            shapeTool={shapeTool}
             onChange={(patch) => setEditOps({ ...editOps, ...patch })}
             onReset={() => setEditOps(DEFAULT_OPS)}
             onHoldOriginal={setShowOriginal}
-            onToggleRegion={() => setRegionTool(!regionTool)}
+            onShapeTool={setRegionShapeTool}
             onApply={handleApplyEdit}
           />
         </div>

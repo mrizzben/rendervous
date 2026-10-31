@@ -784,6 +784,37 @@ textarea:focus {
   bottom: -6px;
   cursor: nwse-resize;
 }
+/* lasso/polygon + highlighter-pen selection preview (Edit tab) */
+.edit-shape-svg {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+.sel-lasso {
+  fill: rgba(99, 230, 190, 0.2);
+  stroke: #63e6be;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.sel-pen {
+  fill: none;
+  stroke: #63e6be;
+  stroke-opacity: 0.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sel-pen-line {
+  fill: none;
+  stroke: #63e6be;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.sel-poly-open {
+  fill: none;
+  stroke: #63e6be;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
 .edit-form {
   position: absolute;
   z-index: 3;
