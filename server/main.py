@@ -172,7 +172,48 @@ def client_api_key(header_key: str | None, body_key: str | None) -> str:
     return os.environ.get("OPENROUTER_API_KEY", "")
 
 
+@app.post("/api/edits")
+async def manual_edit(
+    visualization_id: int = Form(...),
+    parent_revision_id: int = Form(...),
+    meta: str = Form("{}"),
+    file: UploadFile | None = File(default=None),
+):
+    """Save a model-free edit (rotate/flip/tones/sharpen/vignette…) as a
+    minor revision of the parent. Deterministic tools bake client-side;
+    this endpoint only persists the result and chains it as v2 → v2.1 …"""
+    if file is None:
+        raise HTTPException(status_code=400, detail="file (multipart) required")
+    if not db.get_visualization(visualization_id):
+        raise HTTPException(status_code=404, detail="visualization not found")
+    data, ext = await _read_upload(file)
+    path = _save_bytes(data, ext or "png")
+    label = _next_edit_label(visualization_id, parent_revision_id)
+    revision_id = db.create_revision(
+        visualization_id=visualization_id,
+        parent_revision_id=parent_revision_id,
+        label=label,
+        prompt="",
+        negative_prompt="",
+        model="manual",
+        params=json.dumps({"edit_kind": "manual", "tools": _json(meta)}),
+        image_path=path,
+    )
+    db.set_current_revision(visualization_id, revision_id)
+    return {"ok": True, "id": revision_id, "label": label}
+
+
 # ------------------------------------------------------------------ models
+
+
+class EditSpec(BaseModel):
+    """Region edit: rectangle in natural image pixels + change description."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+    instruction: str
 
 
 class GenerateRequest(BaseModel):
@@ -191,6 +232,7 @@ class GenerateRequest(BaseModel):
     design_id: int | None = None
     visualization_id: int | None = None
     parent_revision_id: int | None = None
+    edit: EditSpec | None = None  # region edit of a rendered image
     settings: dict | None = None
     api_key: str | None = None
 
@@ -199,6 +241,36 @@ class GenerateRequest(BaseModel):
 def health():
     env_key = bool(os.environ.get("OPENROUTER_API_KEY"))
     return {"ok": True, "key_configured": env_key}
+
+
+def _next_edit_label(viz_id: int, parent_id: int | None) -> str:
+    """Minor-label builder shared by AI region edits and manual tool edits:
+    v2 → v2.1 → v2.2 … (unique, monotone, derived from existing rows)."""
+    rows = db.list_revisions(viz_id)
+    last = db.last_revision(viz_id)
+    parent_row = next((r for r in rows if r["id"] == parent_id), last)
+    base = (parent_row["label"] if parent_row else "v0").split(".")[0]
+    k = 1 + sum(1 for r in rows if r["label"].startswith(base + "."))
+    return f"{base}.{k}"
+
+
+def build_edit_prompt(edit: EditSpec, img_w: int, img_h: int) -> str:
+    """Prompt for an exact-region edit: change the box, keep the rest.
+
+    Prompt-guided constraint only (no mask/crop compositing): the model is
+    told to keep everything outside the rectangle pixel-identical.
+    """
+    return (
+        "This is an exact-region retouching task on an image of "
+        f"{img_w}x{img_h} pixels. Change ONLY the rectangle from "
+        f"({edit.x},{edit.y}) to ({edit.x + edit.w},{edit.y + edit.h}): "
+        f"{edit.instruction}. "
+        "Everything outside this rectangle must remain pixel-identical: "
+        "same content, same framing, same colors, same lighting — no "
+        "shift, no crop, no zoom. Inside the rectangle keep the surrounding "
+        "architecture, materials and lighting consistent with the rest of "
+        "the image."
+    )
 
 
 @app.get("/api/models")
@@ -227,6 +299,16 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
         if design:
             image_url = _data_url(design["image_path"])
 
+    # Region edit: the edit spec defines the prompt and needs an input image.
+    if req.edit:
+        if not image_url:
+            raise HTTPException(
+                status_code=400,
+                detail="an area edit requires an input image (image_url or design_id)",
+            )
+        w, h = _image_size(image_url)
+        prompt = build_edit_prompt(req.edit, w, h)
+
     params = {
         "width": req.width,
         "height": req.height,
@@ -239,6 +321,8 @@ def generate(req: GenerateRequest, x_openrouter_key: str | None = Header(default
         "image_url": image_url or None,
         "visualization_id": req.visualization_id,
         "parent_revision_id": req.parent_revision_id,
+        # stored for provenance + the worker's minor-version label logic
+        "edit": req.edit.model_dump() if req.edit else None,
     }
     job_id = db.create_job(
         model=req.model or or_.DEFAULT_MODEL,
@@ -544,16 +628,23 @@ def _worker():
             # multi-MB per revision and is served back on every project load.
             params.pop("image_url", None)
             if viz_id:
-                # label v{n} where n = sibling count + 1
-                n = len(db.list_revisions(viz_id)) + 1
+                # Full renders are majors (v1, v2, …). Edits — AI region edits
+                # and manual tool edits — are minors of their parent:
+                # v2 → v2.1 → v2.2 …
+                rows = db.list_revisions(viz_id)
                 last = db.last_revision(viz_id)
                 parent = params.get("parent_revision_id") or (
                     last["id"] if last else None
                 )
+                label = (
+                    _next_edit_label(viz_id, parent)
+                    if params.get("edit")
+                    else f"v{len(rows) + 1}"
+                )
                 revision_id = db.create_revision(
                     visualization_id=viz_id,
                     parent_revision_id=parent,
-                    label=f"v{n}",
+                    label=label,
                     prompt=job["prompt"],
                     negative_prompt=settings.get("negative_prompt", ""),
                     model=job["model"],

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import type {
   Design,
+  EditSpec,
   ModelInfo,
   ProjectSummary,
   Revision,
@@ -19,6 +20,7 @@ import {
   getModels,
   getProject,
   hasUserKey,
+  imageUrlToDataUrl,
   listProjects,
   measureImage,
   pollUntil,
@@ -27,6 +29,7 @@ import {
   setDesignArchived,
   setProjectArchived,
   shortModel,
+  saveEdit,
   uploadDesign,
 } from "./api";
 import CanvasStage from "./components/CanvasStage";
@@ -36,6 +39,9 @@ import Header from "./components/Header";
 import LeftRail from "./components/LeftRail";
 import Modal from "./components/Modal";
 import VisualizePanel from "./components/VisualizePanel";
+import EditPanel from "./components/EditPanel";
+import { bakeEdit, DEFAULT_OPS, type EditOps } from "./lib/imageEdit";
+import PromptPanel from "./components/PromptPanel";
 import {
   DEFAULT_SETTINGS,
   loadPresets,
@@ -64,6 +70,10 @@ export default function App() {
   const [designRatio, setDesignRatio] = useState<AspectRatio | "auto" | null>(
     null,
   );
+  const [stageTab, setStageTab] = useState<"render" | "edit">("render");
+  const [editOps, setEditOps] = useState<EditOps>(DEFAULT_OPS);
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [regionTool, setRegionTool] = useState(false); // AI region-select tool
   const [presets, setPresets] = useState<Preset[]>(() => loadPresets());
 
   const model = useMemo(
@@ -197,6 +207,39 @@ export default function App() {
       );
       if (out.status === "failed") {
         setBanner(out.error || "Render failed.");
+      }
+      await reload();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Edit tab: region edit of the current render → new minor revision
+  const runEdit = async (edit: EditSpec) => {
+    if (busy || !model || !activeDesign || !activeViz || !currentRev?.image_url)
+    return;
+    setBanner("");
+    setBusy(true);
+    try {
+      // the edit source is the CURRENT RENDER, fed back as the img2img input
+      const image_url = await imageUrlToDataUrl(currentRev.image_url);
+      const { job_id } = await generate({
+        model: model.id,
+        image_url,
+        edit,
+        design_id: activeDesign.id,
+        visualization_id: activeViz.id,
+        parent_revision_id: currentRev.id,
+      });
+      const out = await pollUntil(
+        () => getJob(job_id),
+        (j) => j.status === "done" || j.status === "failed",
+        2000,
+      );
+      if (out.status === "failed") {
+        setBanner(out.error || "Edit failed.");
       }
       await reload();
     } catch (e) {
@@ -358,6 +401,27 @@ export default function App() {
   };
   const compare = pair();
 
+  // Edit tab: reset the tool state when the source revision changes
+  useEffect(() => {
+    setEditOps(DEFAULT_OPS);
+    setShowOriginal(false);
+  }, [currentRev?.id]);
+
+  // Edit tab: model-free tools bake client-side, server stores the result
+  const handleApplyEdit = async () => {
+    if (busy || !activeViz || !currentRev?.image_url) return;
+    setBusy(true);
+    try {
+      const blob = await bakeEdit(currentRev.image_url, editOps);
+      await saveEdit(activeViz.id, currentRev.id, blob, editOps);
+      await reload();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // re-render the app (so shownBanner re-evaluates) whenever the header key changes
   const [, bumpKeyTick] = useReducer((x: number) => x + 1, 0);
   const shownBanner =
@@ -396,6 +460,7 @@ export default function App() {
         />
 
         <div className="stage-col">
+          <div className="stage-area">
           <CanvasStage
             projectId={projectId}
             referenceUrl={activeDesign?.image_url ?? null}
@@ -406,6 +471,13 @@ export default function App() {
                 ? `${currentRev.label} · ${shortModel(currentRev.model ?? "model")}`
                 : null
             }
+            tab={stageTab}
+            onTab={setStageTab}
+            busy={busy}
+            editOps={editOps}
+            showOriginal={showOriginal}
+            regionTool={regionTool}
+            onEditApply={runEdit}
             onUpload={handleUpload}
             onCreateProject={() => {
               const name = window.prompt(
@@ -416,6 +488,15 @@ export default function App() {
               handleNewProject(name.trim() || "Untitled Project");
             }}
           />
+          {activeDesign && stageTab === "render" && (
+            <PromptPanel
+              value={settings.custom_instruction ?? ""}
+              onChange={(v) =>
+                setSettings({ ...settings, custom_instruction: v })
+              }
+            />
+          )}
+          </div>
           <Filmstrip
             revisions={revisions}
             currentId={currentId}
@@ -428,19 +509,34 @@ export default function App() {
           />
         </div>
 
-        <VisualizePanel
-          settings={settings}
-          onChange={setSettings}
-          busy={busy}
-          disabled={!activeDesign}
-          engineName={model ? shortModel(model.id) : "…"}
-          onRender={() => runRender()}
-          elapsed={elapsed}
-          presets={presets}
-          onSavePreset={handleSavePreset}
-          onApplyPreset={handleApplyPreset}
-          onDeletePreset={handleDeletePreset}
-        />
+        <div className={stageTab === "edit" ? "pane-hidden" : ""}>
+          <VisualizePanel
+            settings={settings}
+            onChange={setSettings}
+            busy={busy}
+            disabled={!activeDesign}
+            engineName={model ? shortModel(model.id) : "…"}
+            onRender={() => runRender()}
+            elapsed={elapsed}
+            presets={presets}
+            onSavePreset={handleSavePreset}
+            onApplyPreset={handleApplyPreset}
+            onDeletePreset={handleDeletePreset}
+          />
+        </div>
+        <div className={stageTab === "edit" ? "" : "pane-hidden"}>
+          <EditPanel
+            ops={editOps}
+            disabled={!currentRev}
+            busy={busy}
+            regionTool={regionTool}
+            onChange={(patch) => setEditOps({ ...editOps, ...patch })}
+            onReset={() => setEditOps(DEFAULT_OPS)}
+            onHoldOriginal={setShowOriginal}
+            onToggleRegion={() => setRegionTool(!regionTool)}
+            onApply={handleApplyEdit}
+          />
+        </div>
       </div>
 
       {compare && (

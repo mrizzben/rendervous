@@ -429,20 +429,6 @@ export default function VisualizePanel({
 
       {/* Sticky footer: prompt + Render always visible, no scrolling */}
       <div className="render-footer">
-        <div className="ctl">
-          <div className="ctl-label">
-            What should change? <span className="dim">(optional)</span>
-          </div>
-          <textarea
-            className="inp detail-inp"
-            placeholder="e.g. Make the facade exposed concrete · dark teak floor · overcast sky"
-            value={settings.custom_instruction ?? ""}
-            onChange={(e) =>
-              onChange({ ...settings, custom_instruction: e.target.value })
-            }
-          />
-        </div>
-
         <button
           className="btn-render"
           onClick={onRender}

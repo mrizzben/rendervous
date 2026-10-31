@@ -103,6 +103,15 @@ export interface Settings {
   custom_instruction?: string;
 }
 
+export interface EditSpec {
+  /** Region edit — rectangle in natural image pixels. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  instruction: string;
+}
+
 export interface GenerationRequest {
   model?: string;
   prompt?: string;
@@ -119,6 +128,7 @@ export interface GenerationRequest {
   design_id?: number;
   visualization_id?: number;
   parent_revision_id?: number;
+  edit?: EditSpec | null; // region edit of a rendered image
   settings?: Settings;
 }
 
@@ -202,6 +212,43 @@ export function generate(req: GenerationRequest): Promise<{ job_id: number }> {
     method: "POST",
     body: JSON.stringify(req),
   });
+}
+
+/** Fetch a /images URL and convert it to a base64 data URL (same-origin).
+ *  Used to feed a rendered revision back into img2img for region edits. */
+export function imageUrlToDataUrl(url: string): Promise<string> {
+  return fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`could not load image (${r.status})`);
+    return r.blob();
+  }).then(
+    (blob) =>
+      new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result as string);
+        fr.onerror = () => reject(new Error("could not read image"));
+        fr.readAsDataURL(blob);
+      }),
+  );
+}
+
+/** Persist a model-free (client-baked) edit as a minor revision. */
+export function saveEdit(
+  visualizationId: number,
+  parentRevisionId: number,
+  blob: Blob,
+  meta: unknown,
+): Promise<{ ok: true; id: number; label: string }> {
+  const fd = new FormData();
+  fd.append("visualization_id", String(visualizationId));
+  fd.append("parent_revision_id", String(parentRevisionId));
+  fd.append("meta", JSON.stringify(meta));
+  fd.append("file", blob, "edit.png");
+  return fetch("/api/edits", { method: "POST", body: fd, headers: authHeaders() }).then(
+    async (r) => {
+      if (!r.ok) await parseError(r);
+      return r.json() as Promise<{ ok: true; id: number; label: string }>;
+    },
+  );
 }
 
 export function getJob(id: number): Promise<Job> {
