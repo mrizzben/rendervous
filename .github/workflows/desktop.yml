@@ -1,7 +1,7 @@
 name: Build desktop apps
 
-# Manual runs create unsigned QA builds. Version tags require signing secrets
-# and publish signed installers to GitHub Releases.
+# All builds are unsigned: manual runs upload QA artifacts, version tags publish
+# installers to GitHub Releases without requiring signing credentials.
 on:
   workflow_dispatch:
   push:
@@ -65,53 +65,11 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install innosetup --yes --no-progress
 
-      - name: Package and sign Windows installer
+      - name: Package Windows installer
         if: runner.os == 'Windows'
         shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE_PFX_BASE64: >-
-            ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
-          WINDOWS_CERTIFICATE_PASSWORD: >-
-            ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           New-Item -ItemType Directory -Force -Path build/release | Out-Null
-          $release = $env:GITHUB_REF -like 'refs/tags/*'
-          $pfx = Join-Path $env:RUNNER_TEMP 'rendervous-signing.pfx'
-
-          if ($release) {
-            if (-not $env:WINDOWS_CERTIFICATE_PFX_BASE64 -or
-                -not $env:WINDOWS_CERTIFICATE_PASSWORD) {
-              throw 'Missing Windows signing secrets.'
-            }
-            $bytes = [Convert]::FromBase64String(
-              $env:WINDOWS_CERTIFICATE_PFX_BASE64)
-            [IO.File]::WriteAllBytes($pfx, $bytes)
-
-            $sdk = Join-Path "${env:ProgramFiles(x86)}" `
-              'Windows Kits\10\bin'
-            $signtool = Get-ChildItem $sdk -Filter signtool.exe -Recurse |
-              Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
-              Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
-              Select-Object -First 1 -ExpandProperty FullName
-            if (-not $signtool) {
-              throw 'Windows SDK signtool.exe was not found.'
-            }
-
-            $signArgs = @(
-              'sign', '/f', $pfx, '/p', $env:WINDOWS_CERTIFICATE_PASSWORD,
-              '/fd', 'SHA256', '/tr', 'http://timestamp.digicert.com',
-              '/td', 'SHA256'
-            )
-            Get-ChildItem build/app/Rendervous -Recurse -File |
-              Where-Object { $_.Extension -in '.exe', '.dll', '.pyd' } |
-              ForEach-Object {
-                & $signtool @signArgs $_.FullName
-                if ($LASTEXITCODE -ne 0) {
-                  throw "Signing failed: $($_.Name)"
-                }
-              }
-          }
-
           $iscc = Join-Path "${env:ProgramFiles(x86)}" `
             'Inno Setup 6\ISCC.exe'
           if (-not (Test-Path $iscc)) {
@@ -123,63 +81,8 @@ jobs:
             throw 'Inno Setup compilation failed.'
           }
 
-          if ($release) {
-            $installer = "build/release/Rendervous-Windows-Setup-" + `
-              "$env:APP_VERSION.exe"
-            & $signtool @signArgs $installer
-            if ($LASTEXITCODE -ne 0) {
-              throw 'Signing the installer failed.'
-            }
-            Remove-Item $pfx -Force
-          }
-
-      - name: Sign macOS app
-        if: runner.os == 'macOS' && startsWith(github.ref, 'refs/tags/')
-        env:
-          APPLE_CERTIFICATE_P12_BASE64: >-
-            ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
-          APPLE_CERTIFICATE_PASSWORD: >-
-            ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$APPLE_CERTIFICATE_P12_BASE64" ||
-                -z "$APPLE_CERTIFICATE_PASSWORD" ]]; then
-            echo 'Missing Apple signing certificate secrets.' >&2
-            exit 1
-          fi
-          KEYCHAIN="$RUNNER_TEMP/rendervous-signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
-          P12="$RUNNER_TEMP/rendervous-signing.p12"
-          printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" |
-            base64 --decode > "$P12"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security import "$P12" -k "$KEYCHAIN" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list \
-            -S apple-tool:,apple:,codesign: -s \
-            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" |
-            awk -F '"' '/Developer ID Application:/ { print $2; exit }')"
-          if [[ -z "$IDENTITY" ]]; then
-            echo 'No Developer ID Application identity found.' >&2
-            exit 1
-          fi
-          codesign --deep --force --options runtime --timestamp \
-            --keychain "$KEYCHAIN" --sign "$IDENTITY" \
-            build/app/Rendervous.app
-          codesign --verify --deep --strict --verbose=2 \
-            build/app/Rendervous.app
-          rm -f "$P12"
-
-      - name: Create and notarize macOS DMG
+      - name: Create macOS DMG
         if: runner.os == 'macOS'
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: >-
-            ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           mkdir -p build/release build/dmg
@@ -188,18 +91,6 @@ jobs:
           DMG="build/release/${{ matrix.artifact }}-$APP_VERSION.dmg"
           hdiutil create -volname Rendervous -srcfolder build/dmg \
             -ov -format UDZO "$DMG"
-
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            if [[ -z "$APPLE_ID" || -z "$APPLE_APP_SPECIFIC_PASSWORD" ||
-                  -z "$APPLE_TEAM_ID" ]]; then
-              echo 'Missing Apple notarization secrets.' >&2
-              exit 1
-            fi
-            xcrun notarytool submit "$DMG" --apple-id "$APPLE_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" --wait
-            xcrun stapler staple "$DMG"
-          fi
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -227,7 +118,7 @@ jobs:
         run: >-
           gh release create "${GITHUB_REF_NAME}" release-assets/*
           --title "${GITHUB_REF_NAME}"
-          --notes "Windows: run the installer. macOS: open the DMG and drag
-          Rendervous to Applications. Launch the app and enter your OpenRouter
-          API key."
+          --notes "Unsigned: Windows may show SmartScreen. macOS: open the
+          DMG, drag Rendervous to Applications, then right-click the app and
+          choose Open on first launch. Enter your OpenRouter API key."
           --generate-notes --verify-tag

@@ -59,44 +59,24 @@ process, so there is no nginx and no second process.
 
 ### Publish a release
 
-Push a version tag such as `v1.2.3`. GitHub Actions builds and publishes a
-Windows installer plus macOS DMGs on the repository's **Releases** page. The
-macOS DMG opens with Rendervous and an Applications shortcut; Windows setup
-installs for the current user and adds a Start Menu shortcut. Manual workflow
-runs make unsigned QA artifacts only; they do not publish a release.
+Push a version tag such as `v1.2.3`. GitHub Actions builds and publishes an
+unsigned Windows installer plus macOS DMGs on the repository's **Releases**
+page. The macOS DMG opens with Rendervous and an Applications shortcut; Windows
+setup installs for the current user and adds a Start Menu shortcut. Manual
+workflow runs upload unsigned QA artifacts without publishing a release. No
+signing certificates or GitHub Actions secrets are required.
 
-Before tagging a release, add these in GitHub → Settings → Secrets and
-variables → Actions:
+Because these builds are unsigned, macOS may block the app on first launch;
+right-click Rendervous and choose **Open**. Windows may show a SmartScreen
+unknown-publisher warning. Only download the app from the official Releases
+page.
 
-- `WINDOWS_CERTIFICATE_PFX_BASE64`: base64-encoded Windows code-signing PFX.
-- `WINDOWS_CERTIFICATE_PASSWORD`: password for that PFX.
-- `APPLE_CERTIFICATE_P12_BASE64`: base64-encoded Apple Developer ID
-  Application certificate exported as a P12.
-- `APPLE_CERTIFICATE_PASSWORD`: password for the P12.
-- `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`: Apple account
-  credentials for notarization. A paid Apple Developer account is required.
-
-Encode each exported certificate locally before saving it as a secret:
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("codesign.pfx"))
-```
+Publish with a numeric `vMAJOR.MINOR.PATCH` tag:
 
 ```bash
-base64 -i DeveloperID.p12 | tr -d '\n'
+git tag v0.1.2
+git push origin v0.1.2
 ```
-
-Keep certificates and passwords private. Once configured, publish with:
-
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-Tag builds fail rather than publish unsigned releases if signing or
-notarization credentials are missing. Signing
-removes the unknown-publisher warning; Windows SmartScreen can still warn for
-a new certificate until it earns reputation.
 
 ### Build locally
 
