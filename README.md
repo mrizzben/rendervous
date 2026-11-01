@@ -5,131 +5,47 @@
   <img src="assets/rendervous_logo.png#gh-dark-mode-only" alt="Rendervous" width="480" />
 </p>
 
-An architectural visualization studio: architects upload their 3D design (SketchUp viewport, clay render, or any exported view) and Rendervous turns it into a photorealistic visualization — **without redesigning it**.
+An architectural visualization studio that turns a design reference into a
+photorealistic render — **without redesigning it**.
 
 > Your design, photorealistically visualized — not redesigned.
 
-The full logo appears in the studio header. The standalone icon is used for the
-browser favicon and Windows app; macOS releases use the mac-specific icon.
+The reference design is the source of truth: preserve its geometry and camera,
+while exploring materials, lighting, and atmosphere.
 
-The design is the source of truth. Geometry is preserved; materials, lighting, environment and atmosphere are rendered. **No prompts, no text-to-image** — this is not a Stable Diffusion WebUI clone, it is a render tool.
+## What you can do
 
-## Features
+- Import a SketchUp viewport, clay render, or exported design view.
+- Render without changing the design's geometry or camera.
+- Tune architectural style, lighting, materials, environment, and geometry fidelity.
+- Review, compare, branch, and restore render revisions.
+- Make local image adjustments or request an AI edit to a selected region.
+- Choose an image model and see its price before rendering.
 
-- **Import → Render → Revise → Compare** workflow, modeled after archviz tools (V-Ray / Enscape inspired, not copied)
-- **Canvas-first studio**: left rail holds projects & views (designs), the center canvas shows the design vs. the latest render with a drag-to-compare divider, the right panel holds Visualize controls, and the bottom filmstrip holds revisions
-- **Architectural controls only**: Style (Photoreal / Editorial / Minimal / Atmospheric), Lighting (Daylight / Overcast / Golden hour / Sunset / Night), Materials (As designed / Concrete / Wood / Stone / Custom), Environment (None / Tropical / Urban / Forest / Custom), Geometry fidelity slider (STRICT ↔ CREATIVE), plus an optional "what should change" natural-language note
-- **Advanced lighting & camera configs**: sun direction (azimuth) and sun elevation (overrides the preset), focal length and aperture (F-stop) — tuned to feel like a real shoot, not a prompt
-- **Geometry-preserving prompt template** (`server/prompts.json`): the reference is authoritative — geometry and camera are immutable, only appearance changes
-- **Revision workflow**: every render is a revision of the imported design — click to make current, branch from any revision, select two to compare side-by-side, delete
-- **Bring-your-own-key**: paste your OpenRouter API key in the header (stored in this browser only, sent per-request as `X-OpenRouter-Key`; falls back to server env `OPENROUTER_API_KEY`). Never persisted server-side.
-- **Render engine selection**: pick any OpenRouter image model (e.g. `google/gemini-2.5-flash-image` recommended) with per-image price shown
+## Set up the app
 
-## Stack
+1. Download the latest [Rendervous release](https://github.com/mrizzben/rendervous/releases/latest).
+2. Install it for your computer:
+   - **Windows:** run `Rendervous-Windows-Setup-<version>.exe` and follow the installer.
+   - **Apple silicon Mac:** download the `macos-arm64` DMG. For Intel Mac, use
+     `macos-x64`. Open the DMG and drag Rendervous to Applications.
+3. Create an OpenRouter account and API key, then launch Rendervous. Paste the
+   key into the **Key** field, upload a design view, choose your render settings,
+   and select **Render**.
 
-- **Frontend**: Vite + React + TypeScript, hand-written dark studio theme (no UI framework)
-- **Backend**: FastAPI (Python), SQLite (stdlib `sqlite3`), Pillow, `requests` — a background worker thread consumes a job queue and calls OpenRouter
+The current installers are unsigned. Windows may show a SmartScreen warning;
+choose **More info → Run anyway** only if you downloaded it from the official
+Releases page. On macOS, Control-click Rendervous in Applications and choose
+**Open** on first launch. Some macOS configurations may still refuse unsigned
+apps.
 
-> Deliberately not MVP: no PostgreSQL, no object storage, no external job system — SQLite + local disk + an in-process worker thread are simpler and sufficient for a single instance.
+## Data and rendering
 
-## Run
+Desktop projects, revisions, and images are stored on your computer. Rendering
+sends the selected reference image and settings to OpenRouter using your key.
+Your key stays in the local app profile and is not saved by the app server.
 
-```bash
-# 1. Backend
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn server.main:app --port 8000
+## For developers
 
-# 2. Frontend (new terminal)
-npm install
-npm run dev        # http://localhost:5173
-```
-
-Then paste your OpenRouter API key into the header bar (or set `OPENROUTER_API_KEY` on the server — `curl localhost:8000/api/health` shows `key_configured`).
-
-## Run with Docker
-
-```bash
-# frontend only — the backend has no host port, it's reachable
-# on the compose network via the nginx proxy
-FRONTEND_PORT=8080 docker compose up --build
-```
-
-- Brings its own key: paste it in the header bar; the optional `OPENROUTER_API_KEY` env var is only a fallback.
-- `./data` is bind-mounted into the backend container, so projects/views/revisions/images survive restarts.
-- Only the frontend is host-exposed (`FRONTEND_PORT`, default `8080`); the backend is reachable only on the compose network.
-- The frontend container is nginx serving the built assets and reverse-proxying `/api` + `/images` to the backend; the backend starts first (healthcheck-gated).
-
-## Desktop app (Windows / macOS)
-
-`desktop.py` runs the same FastAPI app in-process on a free localhost port and
-shows it in a native window (pywebview) — the built SPA is served by that same
-process, so there is no nginx and no second process.
-
-### Publish a release
-
-Push a version tag such as `v1.2.3`. GitHub Actions builds and publishes an
-unsigned Windows installer plus macOS DMGs on the repository's **Releases**
-page. The macOS DMG opens with Rendervous and an Applications shortcut; Windows
-setup installs for the current user and adds a Start Menu shortcut. Manual
-workflow runs upload unsigned QA artifacts without publishing a release. No
-signing certificates or GitHub Actions secrets are required.
-
-Because these builds are unsigned, macOS may block the app on first launch;
-right-click Rendervous and choose **Open**. Windows may show a SmartScreen
-unknown-publisher warning. Only download the app from the official Releases
-page.
-
-Publish with a numeric `vMAJOR.MINOR.PATCH` tag:
-
-```bash
-git tag v0.1.2
-git push origin v0.1.2
-```
-
-### Build locally
-
-Build on the target OS (no cross-compiling):
-
-```bash
-npm ci && npm run build
-python3 -m venv .venv-desktop
-.venv-desktop/bin/pip install -r requirements-desktop.txt
-.venv-desktop/bin/pyinstaller packaging/rendervous.spec --noconfirm \
-  --distpath build/app --workpath build/pyinstaller
-```
-
-- Data (SQLite + images) stays under `%LOCALAPPDATA%\Rendervous` on Windows
-  and `~/Library/Application Support/Rendervous` on macOS; set
-  `RENDERVOUS_DATA` to override. Repo/Docker still uses `./data`.
-- Windows uses WebView2 (preinstalled on Windows 11 and current Windows 10).
-- To build the Windows installer locally, install Inno Setup 6 and compile
-  `packaging/windows/Rendervous.iss` after building the app.
-
-## API (summary)
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/health` | `{ok, key_configured}` |
-| `GET /api/models` | image-capable OpenRouter models, price included, from the bundled static catalog (`server/models_catalog.json`, refreshed off-band by `scripts/refresh_models.py`) |
-| `POST /api/generate` | start a render job; `settings` auto-builds the architectural prompt; `design_id` picks the reference image, `visualization_id`/`parent_revision_id` chain revisions |
-| `GET /api/jobs/{id}` | job status (queued/running/done/failed), `image_url`, error |
-| `GET /api/projects` | list projects |
-| `POST /api/projects` | create a project |
-| `GET /api/projects/{id}` | full tree: designs → visualizations → revisions |
-| `PATCH /api/projects/{id}` | rename a project |
-| `POST /api/projects/{id}/archive` · `DELETE /api/projects/{id}` | archive / delete a project |
-| `POST /api/projects/{id}/designs` | multipart upload of a design reference image |
-| `POST /api/visualizations` | create a visualization with settings |
-| `POST /api/designs/{id}/archive` · `DELETE /api/designs/{id}` | archive / delete a design |
-| `POST /api/revisions/{id}/restore` · `DELETE /api/revisions/{id}` | revision management |
-
-Auth: pass `api_key` in the body or `X-OpenRouter-Key` header; falls back to `OPENROUTER_API_KEY` env.
-
-## Data model
-
-```text
-Project → Designs (views/camera angles) → Visualizations → Revisions (parent_revision_id = branch)
-                                                        └── Jobs (queued/running/done/failed)
-```
-
-Files on disk under `data/images/`, SQLite under `data/rendervous.db`, prompt template in `server/prompts.json` (configurable, not hardcoded).
+See [DEVELOPING.md](DEVELOPING.md) for source setup, Docker, API details, and
+desktop packaging.
