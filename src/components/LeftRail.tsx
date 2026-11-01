@@ -277,23 +277,16 @@ export default function LeftRail({
         </label>
       )}
 
-      <div className="rail-foot">
-        <div className="dim">
-          The imported design is the source of truth.
-          <br />
-          Geometry is preserved — appearance is rendered.
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept={ACCEPTED_TYPES}
-          style={{ display: "none" }}
-          onChange={(e) => {
-            pickFile(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPTED_TYPES}
+        style={{ display: "none" }}
+        onChange={(e) => {
+          pickFile(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
     </aside>
   );
 }

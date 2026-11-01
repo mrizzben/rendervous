@@ -451,10 +451,6 @@ export default function VisualizePanel({
             </>
           )}
         </button>
-        <div className="dim ctl-note">
-          Renders preserve the imported geometry — only materials, light,
-          environment and atmosphere change.
-        </div>
       </div>
     </aside>
   );

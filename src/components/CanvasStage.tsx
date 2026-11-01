@@ -301,11 +301,7 @@ export default function CanvasStage({
             <PlusIcon size={26} />
           </div>
           <h2>Start with a project</h2>
-          <p>
-            Create a project, then import your architectural design.
-            <br />
-            No prompts. No text-to-image.
-          </p>
+          <p>Create a project, then import your architectural design.</p>
           <button className="btn-cta" onClick={onCreateProject}>
             New project
           </button>
@@ -316,10 +312,7 @@ export default function CanvasStage({
             <PlusIcon size={26} />
           </div>
           <h2>Import your design</h2>
-          <p>
-            Drop a SketchUp viewport, clay render or exported view
-            <br />— the geometry stays yours, Rendervous makes it photoreal.
-          </p>
+          <p>Drop a SketchUp viewport, clay render or exported view.</p>
           <label className="btn-cta file-cta">
             Browse files
             <input
@@ -570,7 +563,7 @@ export default function CanvasStage({
         </div>
       )}
       <div className="stage-caption">
-        {compareMode && <span className="cap-design">DESIGN · source of truth</span>}
+        {compareMode && <span className="cap-design">DESIGN</span>}
         {renderUrl && (
           <span className="cap-right">
             <a

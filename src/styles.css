@@ -479,11 +479,6 @@ textarea:focus {
   accent-color: #63e6be;
 }
 
-.rail-foot {
-  border-top: 1px solid #232830;
-  padding-top: 11px;
-}
-
 /* ---- center stage column ---- */
 .stage-col {
   flex: 1;
