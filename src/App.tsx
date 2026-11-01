@@ -173,6 +173,25 @@ export default function App() {
     setDesigns(d.designs);
   };
 
+  // Nothing is selected on a fresh launch (also after an app update), so the
+  // project dropdown showed a name while no designs were loaded. Select the
+  // newest project as soon as the list arrives, and recover if the selected
+  // project disappears.
+  useEffect(() => {
+    if (projects.length === 0) {
+      if (projectId != null) {
+        setProjectId(null);
+        setDesigns([]);
+      }
+      return;
+    }
+    if (projectId == null || !projects.some((p) => p.id === projectId)) {
+      void loadProject(projects[0].id);
+    }
+    // loadProject only closes over setters; the list + selection drive this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, projectId]);
+
   const handleNewProject = async (name: string) => {
     try {
       const p = await createProject(name);
