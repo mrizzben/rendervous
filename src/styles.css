@@ -984,6 +984,14 @@ textarea:focus {
 }
 
 /* ---- right Visualize panel ---- */
+.right-pane {
+  display: flex;
+  min-height: 0;
+}
+.right-pane > .controls {
+  height: 100%;
+  min-height: 0;
+}
 .controls {
   width: 296px;
   flex: none;

@@ -32,11 +32,12 @@ export default function CompareView({ a, b, currentId }: CompareProps) {
         className="compare"
         ref={ref}
         onPointerDown={(e) => {
+          if (e.button !== 0) return;
           (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
           set(e.clientX);
         }}
         onPointerMove={(e) => {
-          if (e.buttons > 0) set(e.clientX);
+          if ((e.buttons & 1) !== 0) set(e.clientX);
         }}
       >
         <img src={a.image_url ?? ""} alt={a.label} />

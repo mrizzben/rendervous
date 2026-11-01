@@ -182,7 +182,9 @@ export default function EditPanel({
             type="button"
             className="btn-edit-cancel"
             disabled={!dirty || off}
-            onPointerDown={() => onHoldOriginal(true)}
+            onPointerDown={(e) => {
+              if (e.button === 0) onHoldOriginal(true);
+            }}
             onPointerUp={() => onHoldOriginal(false)}
             onPointerLeave={() => onHoldOriginal(false)}
             title="Hold to preview the original render on the stage"

@@ -17,7 +17,12 @@ export default function Modal({ onClose, children }: ModalProps) {
   }, [onClose]);
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => {
+        if (e.button === 0) onClose();
+      }}
+    >
       <div className="modal-box" onMouseDown={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           <XIcon size={16} />

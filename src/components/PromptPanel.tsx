@@ -18,6 +18,7 @@ export default function PromptPanel({
   const drag = useRef<{ dx: number; dy: number } | null>(null);
 
   const start = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
     // clicks on buttons must not start a drag (capture would eat their click)
     if ((e.target as HTMLElement).closest("button")) return;
     const el = ref.current;

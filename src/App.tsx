@@ -519,7 +519,7 @@ export default function App() {
           />
         </div>
 
-        <div className={stageTab === "edit" ? "pane-hidden" : ""}>
+        <div className={stageTab === "edit" ? "pane-hidden" : "right-pane"}>
           <VisualizePanel
             settings={settings}
             onChange={setSettings}
@@ -534,7 +534,7 @@ export default function App() {
             onDeletePreset={handleDeletePreset}
           />
         </div>
-        <div className={stageTab === "edit" ? "" : "pane-hidden"}>
+        <div className={stageTab === "edit" ? "right-pane" : "pane-hidden"}>
           <EditPanel
             ops={editOps}
             disabled={!currentRev}

@@ -154,6 +154,7 @@ export default function CanvasStage({
   };
 
   const onOverlayDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
     // interactions with the region mini-form (textarea/buttons) must not
     // start an overlay drag or eat the button click
     if ((e.target as HTMLElement).closest(".edit-form")) return;
@@ -208,7 +209,7 @@ export default function CanvasStage({
   const onOverlayMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     const b = imageBox();
-    if (!d || !b || e.buttons === 0) return;
+    if (!d || !b || (e.buttons & 1) === 0) return;
     const p = toImgPt(e);
     if (d.mode === "draw") {
       // poly vertices are placed by clicks only — pointer moves are ignored
@@ -380,12 +381,12 @@ export default function CanvasStage({
           className="stage-wrap"
           ref={wrapRef}
           onPointerDown={(e) => {
-            if (!renderUrl) return;
+            if (!renderUrl || e.button !== 0) return;
             (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
             setSplit(e.clientX);
           }}
           onPointerMove={(e) => {
-            if (renderUrl && e.buttons > 0) setSplit(e.clientX);
+            if (renderUrl && (e.buttons & 1) !== 0) setSplit(e.clientX);
           }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
