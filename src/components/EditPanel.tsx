@@ -1,3 +1,13 @@
+import {
+  FlipHorizontal2,
+  FlipVertical2,
+  Lasso,
+  Paintbrush,
+  Pentagon,
+  RotateCcw,
+  RotateCw,
+  Square,
+} from "lucide-react";
 import type { EditOps } from "../lib/imageEdit";
 import { isDirty } from "../lib/imageEdit";
 
@@ -42,10 +52,16 @@ const SLIDERS = [
   SET("vignette", "Vignette", 0, 100),
 ] as const;
 
-const ROTATE_DIRS: { id: 90 | 270; label: string; title: string }[] = [
-  { id: 270, label: "⟲", title: "Rotate 90° left" },
-  { id: 90, label: "⟳", title: "Rotate 90° right" },
-];
+const ROTATE_DIRS = [
+  { id: 270, Icon: RotateCcw, title: "Rotate 90° left" },
+  { id: 90, Icon: RotateCw, title: "Rotate 90° right" },
+] as const;
+const REGION_TOOLS = [
+  { key: "rect", label: "Box", Icon: Square, title: "Drag a rectangle on the stage" },
+  { key: "lasso", label: "Lasso", Icon: Lasso, title: "Draw a freeform outline on the stage" },
+  { key: "poly", label: "Polygon", Icon: Pentagon, title: "Click to place corners and close the polygon" },
+  { key: "pen", label: "Brush", Icon: Paintbrush, title: "Paint the area with a brush highlighter" },
+] as const;
 
 export default function EditPanel({
   ops,
@@ -90,37 +106,40 @@ export default function EditPanel({
       <div className="ctl">
         <div className="ctl-label">Geometry</div>
         <div className="chips">
-          {ROTATE_DIRS.map((r) => (
+          {ROTATE_DIRS.map(({ id, Icon, title }) => (
             <button
-              key={r.id}
+              key={id}
               type="button"
-              className="chip"
+              className="chip tool-icon"
               disabled={off}
-              title={r.title}
+              title={title}
+              aria-label={title}
               onClick={() => {
-                const next = (ops.rotate + r.id) % 360;
+                const next = (ops.rotate + id) % 360;
                 const rot = (next === 90 ? 90 : next === 180 ? 180 : next === 270 ? 270 : 0) as 0 | 90 | 180 | 270;
                 onChange({ rotate: rot });
               }}
             >
-              {r.label}
+              <Icon size={14} strokeWidth={1.7} aria-hidden="true" />
             </button>
           ))}
           <button
             type="button"
-            className={`chip ${ops.flipH ? "active" : ""}`}
+            className={`chip tool-with-label ${ops.flipH ? "active" : ""}`}
             disabled={off}
             onClick={() => onChange({ flipH: !ops.flipH })}
           >
-            Flip H
+            <FlipHorizontal2 size={14} strokeWidth={1.7} aria-hidden="true" />
+            <span>Flip H</span>
           </button>
           <button
             type="button"
-            className={`chip ${ops.flipV ? "active" : ""}`}
+            className={`chip tool-with-label ${ops.flipV ? "active" : ""}`}
             disabled={off}
             onClick={() => onChange({ flipV: !ops.flipV })}
           >
-            Flip V
+            <FlipVertical2 size={14} strokeWidth={1.7} aria-hidden="true" />
+            <span>Flip V</span>
           </button>
         </div>
       </div>
@@ -129,24 +148,17 @@ export default function EditPanel({
       <div className="ctl">
         <div className="ctl-label">Region edit · AI</div>
         <div className="chips">
-          {(["rect", "lasso", "poly", "pen"] as const).map((k) => (
+          {REGION_TOOLS.map(({ key, label, Icon, title }) => (
             <button
-              key={k}
+              key={key}
               type="button"
-              className={`chip ${regionTool && shapeTool === k ? "active" : ""}`}
+              className={`chip tool-with-label ${regionTool && shapeTool === key ? "active" : ""}`}
               disabled={off}
-              onClick={() => onShapeTool(k)}
-                title={
-                  k === "rect"
-                    ? "Drag a rectangle on the stage"
-                    : k === "lasso"
-                      ? "Draw a freeform outline on the stage"
-                      : k === "poly"
-                        ? "Click to place corners — click the first corner (or double-click) to close"
-                        : "Paint the area with a brush highlighter"
-                }
-              >
-                {k === "rect" ? "Box" : k === "lasso" ? "Lasso" : k === "poly" ? "Polygon" : "Brush"}
+              onClick={() => onShapeTool(key)}
+              title={title}
+            >
+              <Icon size={14} strokeWidth={1.7} aria-hidden="true" />
+              <span>{label}</span>
             </button>
           ))}
         </div>

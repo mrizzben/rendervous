@@ -1044,6 +1044,22 @@ textarea:focus {
     border-color 0.12s,
     color 0.12s;
 }
+.chip.tool-icon,
+.chip.tool-with-label {
+  display: inline-flex;
+  align-items: center;
+}
+.chip.tool-icon {
+  justify-content: center;
+  width: 34px;
+  padding: 5px;
+}
+.chip.tool-with-label {
+  gap: 5px;
+}
+.chip svg {
+  flex: none;
+}
 .chip:hover {
   background: #161a20;
   border-color: #2c323c;

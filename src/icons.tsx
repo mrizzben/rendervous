@@ -1,6 +1,5 @@
-// Minimal inline SVG icon set (lucide-style, 1.5px stroke).
-// Hand-written to keep the repo dependency-free; aria-hidden by default —
-// icon buttons must carry their own accessible label via title/aria-label.
+// Small inline icon set for app chrome; editor tool controls use lucide-react.
+// Decorative SVGs are aria-hidden; icon-only buttons need their own title/label.
 
 import type { SVGProps } from "react";
 
