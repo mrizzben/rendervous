@@ -97,15 +97,35 @@ export default function App() {
   const currentRev = revisions.find((r) => r.id === currentId) ?? null;
 
   useEffect(() => {
+    const acceptModels = (next: ModelInfo[]) => {
+      setModels(next);
+      setModelId((current) =>
+        next.some((model) => model.id === current)
+          ? current
+          : next[0]?.id ?? RECOMMENDED_ID,
+      );
+    };
     getHealth()
       .then((h) => setServerKey(!!h.key_configured))
       .catch(() => setServerKey(false));
     getModels()
-      .then(setModels)
+      .then(acceptModels)
       .catch((e) => fail(e));
+    const refreshModels = () => {
+      getModels().then(acceptModels).catch(() => {});
+    };
+    const startupRefresh = window.setTimeout(refreshModels, 30_000);
+    const dailyRefresh = window.setInterval(
+      refreshModels,
+      25 * 60 * 60 * 1000,
+    );
     listProjects(true)
       .then(setProjects)
       .catch((e) => fail(e));
+    return () => {
+      window.clearTimeout(startupRefresh);
+      window.clearInterval(dailyRefresh);
+    };
   }, []);
 
   // keep a valid design selected after project/state changes

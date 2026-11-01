@@ -8,6 +8,7 @@ import base64
 import contextlib
 import io
 import json
+import logging
 import os
 import queue
 import threading
@@ -20,10 +21,38 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
-from . import db, geometry, prompt_builder
+from . import db, geometry, model_catalog, prompt_builder
 from . import openrouter as or_
 
-app = FastAPI(title="Rendervous")
+def _refresh_model_catalog(stop: threading.Event) -> None:
+    logger = logging.getLogger(__name__)
+    cache_path = Path(db.DATA_DIR) / "models_catalog.json"
+    while not stop.is_set():
+        try:
+            if model_catalog.refresh_catalog(cache_path):
+                logger.info("Refreshed the OpenRouter image-model catalog")
+        except Exception as exc:  # noqa: BLE001 — stale catalog remains usable
+            logger.warning("Model catalog refresh failed: %s", exc)
+        if stop.wait(model_catalog.REFRESH_INTERVAL_SECONDS // 2):
+            return
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    stop = threading.Event()
+    threading.Thread(
+        target=_refresh_model_catalog,
+        args=(stop,),
+        daemon=True,
+        name="rendervous-model-catalog",
+    ).start()
+    try:
+        yield
+    finally:
+        stop.set()
+
+
+app = FastAPI(title="Rendervous", lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
