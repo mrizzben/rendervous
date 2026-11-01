@@ -120,6 +120,7 @@ jobs:
           --repo "${GITHUB_REPOSITORY}"
           --title "${GITHUB_REF_NAME}"
           --notes "Unsigned: Windows may show SmartScreen. macOS: open the
-          DMG, drag Rendervous to Applications, then right-click the app and
-          choose Open on first launch. Enter your OpenRouter API key."
+          DMG and drag Rendervous to Applications. If it will not start, run
+          xattr -dr com.apple.quarantine /Applications/Rendervous.app then
+          open -a /Applications/Rendervous.app. Enter your OpenRouter API key."
           --generate-notes --verify-tag

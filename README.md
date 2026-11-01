@@ -36,8 +36,19 @@ while exploring materials, lighting, and atmosphere.
 The current installers are unsigned. Windows may show a SmartScreen warning;
 choose **More info → Run anyway** only if you downloaded it from the official
 Releases page. On macOS, Control-click Rendervous in Applications and choose
-**Open** on first launch. Some macOS configurations may still refuse unsigned
-apps.
+**Open** on first launch.
+
+If macOS still refuses to open it (nothing appears, or “the application can’t
+be opened”), clear the download quarantine on the installed app, then launch:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Rendervous.app
+open -a /Applications/Rendervous.app
+```
+
+This only removes the Gatekeeper flag for this app; it does not change any
+other security setting. Signed and notarized builds would not need it, and
+require a paid Apple Developer account.
 
 ## Data and rendering
 
