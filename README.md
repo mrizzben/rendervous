@@ -9,8 +9,8 @@ An architectural visualization studio: architects upload their 3D design (Sketch
 
 > Your design, photorealistically visualized — not redesigned.
 
-The full logo appears in the studio header; the standalone icon is used for the
-browser favicon and desktop app.
+The full logo appears in the studio header. The standalone icon is used for the
+browser favicon and Windows app; macOS releases use the mac-specific icon.
 
 The design is the source of truth. Geometry is preserved; materials, lighting, environment and atmosphere are rendered. **No prompts, no text-to-image** — this is not a Stable Diffusion WebUI clone, it is a render tool.
 
