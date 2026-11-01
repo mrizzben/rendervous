@@ -1,7 +1,8 @@
 # Rendervous
 
 <p align="center">
-  <img src="assets/rendervous_logo_readme.png" alt="Rendervous" width="480" />
+  <img src="assets/rendervous_logo_dark.png#gh-light-mode-only" alt="Rendervous" width="480" />
+  <img src="assets/rendervous_logo.png#gh-dark-mode-only" alt="Rendervous" width="480" />
 </p>
 
 An architectural visualization studio: architects upload their 3D design (SketchUp viewport, clay render, or any exported view) and Rendervous turns it into a photorealistic visualization — **without redesigning it**.
