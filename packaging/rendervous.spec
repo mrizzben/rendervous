@@ -15,6 +15,8 @@ import sys
 
 ROOT = os.path.dirname(SPECPATH)
 IS_MAC = sys.platform == "darwin"
+WIN_ICON = os.path.join(ROOT, "packaging", "icons", "rendervous.ico")
+MAC_ICON = os.path.join(ROOT, "packaging", "icons", "rendervous.icns")
 
 # server/db.py derives BASE_DIR from server/db.py's own path, so on disk the
 # bundle keeps the same layout as the repo: dist/ and server/*.json.
@@ -52,6 +54,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    icon=WIN_ICON if sys.platform == "win32" else None,
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="Rendervous")
 
@@ -59,7 +62,7 @@ if IS_MAC:
     app = BUNDLE(
         coll,
         name="Rendervous.app",
-        icon=None,
+        icon=MAC_ICON,
         bundle_identifier="studio.rendervous.desktop",
         info_plist={
             "NSHighResolutionCapable": True,

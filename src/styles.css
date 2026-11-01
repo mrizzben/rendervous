@@ -134,31 +134,14 @@ textarea:focus {
 .brand {
   display: flex;
   align-items: center;
-  gap: 11px;
 }
-.brand-mark {
-  color: #63e6be;
+.brand-logo {
+  display: block;
+  height: 42px;
+  width: auto;
+  max-width: 160px;
   flex: none;
-}
-.brand-txt {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-.brand-name {
-  font-family: "Space Grotesk", Inter, sans-serif;
-  font-size: 16.5px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-.brand-name em {
-  font-style: normal;
-  color: #63e6be;
-}
-.brand-sub {
-  color: #7d8594;
-  font-size: 10.5px;
-  letter-spacing: 0.25px;
+  object-fit: contain;
 }
 .header .grow {
   flex: 1;

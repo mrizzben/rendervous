@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import type { ModelInfo } from "../api";
 import { fmtPrice, hasUserKey, saveKey, shortModel, storedKey } from "../api";
-import { KeyIcon, MarkIcon } from "../icons";
+import { KeyIcon } from "../icons";
+
+const brandLogo = new URL(
+  "../../assets/rendervous_logo.png",
+  import.meta.url,
+).href;
 
 interface HeaderProps {
   models: ModelInfo[];
@@ -31,13 +36,11 @@ export default function Header({
   return (
     <header className="header">
       <div className="brand">
-        <MarkIcon size={18} className="brand-mark" />
-        <div className="brand-txt">
-          <span className="brand-name">
-            Render<em>vous</em>
-          </span>
-          <span className="brand-sub">architectural visualization studio</span>
-        </div>
+        <img
+          className="brand-logo"
+          src={brandLogo}
+          alt="Rendervous — architectural visualization studio"
+        />
       </div>
       <div className="grow" />
 
